@@ -11,7 +11,7 @@ from lib.graphic_basic import Graphic
 
 
 class BSwitch:
-    def __init__(self, init_x, init_y, sTime, eTime):
+    def __init__(self, init_x, init_y, sTime, eTime, Q1, S):
         #state variables
         self.x_previous = self.x_next = init_x
         self.y_previous = self.y_next = init_x
@@ -23,9 +23,9 @@ class BSwitch:
         self.h = 0.01
         
         #bifurcation paramters
-        self.Q1 = 0.75
-        self.S = 0.45
-        
+        self.Q1 = Q1
+        self.S = S
+
         #noise
         #self.sigma1 = 0
         #self.sigma2 = 0
@@ -34,6 +34,21 @@ class BSwitch:
         #if WEij != 0 WIij=0 reciprocally
         #pattern 2(a)
         PARAMETERS_2A = {
+            "tau1":1, 
+            "tau2":10,
+            "b1":0.13*(1+self.Q1), 
+            "b2":0,
+            "WE11":3.9,
+            "WE12":0,
+            "WE21":3.0,
+            "WE22":3.0,
+            "WI11":0,
+            "WI12":0.5*self.Q1,
+            "WI21":0,
+            "WI22":0,
+            }
+        
+        PARAMETERS_2B = {
             "tau1":1, 
             "tau2":10,
             "b1":0.13*(1+self.Q1), 
@@ -117,10 +132,10 @@ class BSwitch:
     
 if __name__ == "__main__":
     #sim
-    main = BSwitch(0.3,0.6, 500,1000)
+    main = BSwitch(0.3,0.6, 0, 100, 0.5, 0.51)
     t_hist, x_hist, y_hist = main.Run()
     #graphic
-    figure = Graphic(t_hist, [0,1], x_hist, y_hist)
+    figure = Graphic(t_hist, [0,0.8], x_hist, y_hist)
     figure.graphics()
     
         
