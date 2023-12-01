@@ -11,6 +11,8 @@ Python 3.11
 
 ## 3. History  
 2023-11-28: Creation of the Repository  
+2023-12-01: Creation of the SLabBCSwitch.py  
 
 ## 4. Development Planning
-・Update the file organization
+・Update the file organization -> 
+・Making Control Panel and Its GUI ->  
