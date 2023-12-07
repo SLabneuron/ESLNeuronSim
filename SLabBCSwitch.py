@@ -13,9 +13,11 @@ import tkinter as tk
 from tkinter import ttk
 import csv
 import numpy as np
+import sys
+from lib.graphic_basic import Graphic
 
 #Local Libralies
-from ode_basic import BSwitch as ode
+from ode_basic import BCSwitch as ode
 from eca_basic import BSwitch as eca
 from analysis_bif import BIF
 
@@ -67,7 +69,7 @@ class BCSwitch:
         "Tx":,
         "Ty":,
         }
-    
+
     ** simp (simulation parameter)
         {
         "sT":,
@@ -88,41 +90,79 @@ class BCSwitch:
         self.bifp = bifp
         self.mp = mp
         self.cap = cap
-        self.sp = simp
+        self.simp = simp
         self.val_init = val_init
 
-        
-        
+        #graphical array
+        self.t_hist = np.array([])
+        self.x_hist = np.array([])
+        self.y_hist = np.array([])
+
+
+
 
     def select(self):
         if (self.model == 0 and self.target == 0):
-            print("cae time waveform")
+            self.ode_time_waveform()
         elif (self.model == 0 and self.target == 1):
-            print("eca bif diagram")
+            self.ode_bif_diagram()
         elif (self.model == 0 and self.target == 2):
-            print("eca parameter region")
+            self.ode_parameter_region()
         elif (self.model == 0 and self.target == 3):
-            print("eca phase portrait")
+            self.ode_phase_portrait
         elif (self.model == 0 and self.target == 4):
-            print("eca theoretical analysis")
+            self.ode_theoretical_analysis()
         elif (self.model == 1 and self.target == 0):
-            print("eca time waveform")
+            self.eca_time_waveform()
         elif (self.model == 1 and self.target == 1):
-            print("eca bif diagram")
+            self.eca_bif_diagram()
         elif (self.model == 1 and self.target == 2):
-            print("eca parameter region")
+            self.eca_parameter_region()
         elif (self.model == 1 and self.target == 3):
-            print("eca phase portrait")
+            self.eca_phase_portrait()
         elif (self.model == 1 and self.target == 4):
-            print("eca theoretical analysis")
+            self.eca_theoretical_analysis()
         else:
             print("error")
-        
-    
-    
 
-if __name__ == "__main__":
-    """Test"""
+    def ode_time_waveform(self):
+        print("ode time waveform")
+        self.master = ode(self.bifp, self.mp, self.simp, self.val_init)
+        t_hist, x_hist, y_hist = self.master.Run()
+
+        self.figure = Graphic(t_hist, [0,0.8], x_hist, y_hist)
+        self.figure.graphics()
+
+    def ode_bif_diagram(self):
+        print("ode bif diagram")
+
+    def ode_parameter_region(self):
+        print("ode parameter region")
+
+    def ode_phase_portrait(self):
+        print("ode phase portrait")
+
+    def ode_theoretical_analysis(self):
+        print("ode theoretical analysis")
+
+    def eca_time_waveform(self):
+        print("eca time waveform")
+
+    def eca_bif_diagram(self):
+        print("eca bif diagram")
+
+    def eca_parameter_region(self):
+        print("eca parameter region")
+
+    def eca_phase_portrait(self):
+        print("eca phase portrait")
+
+    def eca_theoretical_analysis(self):
+        print("eca theoretical analysis")
+
+
+
+def main_ConPane():
     #initialization
     mode = 1
     
@@ -136,14 +176,14 @@ if __name__ == "__main__":
     mp = {
         "tau1":1,
         "tau2":1,
-        "b1":"0.13*(1+self.Q1)",
+        "b1":lambda Q1 = bifp[Q1]: 0.13*(1+Q1),
         "b2":0,
         "WE11":3.9,
         "WE12":0,
         "WE21":3.0,
         "WE22":3.0,
         "WI11":0,
-        "WI12":"0.5*self.Q1",
+        "WI12":lambda Q1 = bifp[Q1]: 0.5*Q1,
         "WI21":0,
         "WI22":0,
     }
@@ -173,7 +213,9 @@ if __name__ == "__main__":
 
     main = BCSwitch(1, 0, 0, bifp, mp, cap, simp, val_init)
     main.select()
-    
 
 
+
+if __name__ == "__main__":
+    main_ConPane()
 

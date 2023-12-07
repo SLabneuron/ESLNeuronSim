@@ -91,7 +91,6 @@ class BSwitch:
             self.x_next = self.x_previous + self.fx()
             self.y_next = self.y_previous + self.fy()
             
-            
             #update
             self.x_previous = self.x_next
             self.y_previous = self.y_next
@@ -102,18 +101,75 @@ class BSwitch:
                 self.y_hist = np.append(self.y_hist, self.y_previous)
                 
         return self.t_hist, self.x_hist, self.y_hist
-            
-            
-    
-    
+
+
+
+
+class BCSwitch:
+    def __init__(self, bifp, mp, simp, val_init):
+        # bifurcation paramters (bifp)
+        Q1 = self.Q1 = bifp["Q1"]
+        self.S = bifp["S"]
+
+        # model parameters (mp)
+        for i, key in enumerate(mp):
+            if callable(mp[key]):
+                globals()[key] = mp[key]()
+            else:
+                globals()[key] = mp[key]
+
+        # simulation parameter (simp)
+        self.sT, self.eT, self.h = simp["sT"], simp["eT"], simp["h"]
+        self.T = 0
+
+        # val_init
+        self.x_previous = self.x_next = val_init["x"]
+        self.y_previous = self.y_next = val_init["y"]
+        
+        # hist 
+        self.t_hist = np.array([])
+        self.x_hist = np.array([])
+        self.y_hist = np.array([])
+
+        print("BCSwitch",self.sT, self.eT, self.h)
+        print(tau1, b1)
+
+
+    def fx(self):
+        return self.h*(1/tau1)*((b1*self.S+WE11*self.x_previous**2+WE12*self.y_previous**2)*(1-self.x_previous)\
+            -(1+WI11*self.x_previous**2+WI12*self.y_previous**2)*self.x_previous)
+
+
+    def fy(self):
+        return self.h*(1/tau2)*((b2*self.S+WE21*self.x_previous**2+WE22*self.y_previous**2)*(1-self.y_previous)\
+            -(1+WI21*self.x_previous**2+WI22*self.y_previous**2)*self.y_previous)
+
+
+    def Run(self):
+        #time evolutions
+        while self.T <= self.eT:
+            #print(self.T, self.x_previous, self.y_previous)
+            self.T += self.h
+            self.x_next = self.x_previous + self.fx()
+            self.y_next = self.y_previous + self.fy()
+
+            #update
+            self.x_previous = self.x_next
+            self.y_previous = self.y_next
+
+            if self.T >= self.sT:
+                self.t_hist = np.append(self.t_hist, self.T)
+                self.x_hist = np.append(self.x_hist, self.x_previous)
+                self.y_hist = np.append(self.y_hist, self.y_previous)
+
+        return self.t_hist, self.x_hist, self.y_hist
+
+
+
 if __name__ == "__main__":
     #sim
-    main = BSwitch(0.3,0.6, 0,100, 0.5, 0.51)
+    main = BSwitch(0.3,0.6, 0,1000, 0.5, 0.51)
     t_hist, x_hist, y_hist = main.Run()
     #graphic
     figure = Graphic(t_hist, [0,0.8], x_hist, y_hist)
     figure.graphics()
-    
-        
-        
-        

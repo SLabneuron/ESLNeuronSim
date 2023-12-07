@@ -19,6 +19,8 @@ class Graphic:
         self.x_hist = x_hist
         self.y_hist = y_hist
         
+        print(self.h)
+        
         
         
         
