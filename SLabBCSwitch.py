@@ -14,12 +14,14 @@ from tkinter import ttk
 import csv
 import numpy as np
 import sys
-from lib.graphic_basic import Graphic
+import os
+import hashlib
 
 #Local Libralies
 from ode_basic import BCSwitch as ode
-from eca_basic import BSwitch as eca
-from analysis_bif import BIF
+from eca_basic import BSwitch as eca # Unchainged Object
+from analysis_bif import Bif
+from lib.graphic_basic import Graphic
 
 
 
@@ -97,9 +99,38 @@ class BCSwitch:
         self.t_hist = np.array([])
         self.x_hist = np.array([])
         self.y_hist = np.array([])
+        
+        #make file
+        self.generate_file()
 
 
-
+    def generate_hash(self):
+        self.model_name = {"model":self.model,}
+        self.target_name = {"target": self.target,}
+        hash_base = {**self.model_name, **self.target_name, **self.bifp, **self.mp, **self.cap}
+        hash_string = "_".join(f"{key}{value}" for key, value in hash_base.items())
+        return hashlib.md5(hash_string.encode()).hexdigest()
+    
+    def generate_file(self, data_dir="DATABASE"):
+        base_hash = self.generate_hash()
+        file_name = f"{base_hash}.csv"
+        file_path = os.path.join(data_dir, file_name)
+        
+        count = 1
+        while self.file_exists_in_dir(file_name, data_dir):
+            file_name = f"{base_hash}_{count}.csv"
+            file_path = os.path.join(data_dir, file_name)
+            count += 1
+        
+        return file_name
+    
+    def file_exists_in_dir(self, file_name, directory):
+        # Search for directory, and subdirectory, and subsubdir...
+        for dirpath, dirname, filenames in os.walk(directory):
+            if file_name in filenames:
+                return True
+        return False
+        
 
     def select(self):
         if (self.model == 0 and self.target == 0):
@@ -125,16 +156,20 @@ class BCSwitch:
         else:
             print("error")
 
+
     def ode_time_waveform(self):
         print("ode time waveform")
         self.master = ode(self.bifp, self.mp, self.simp, self.val_init)
         t_hist, x_hist, y_hist = self.master.Run()
 
-        self.figure = Graphic(t_hist, [0,0.8], x_hist, y_hist)
-        self.figure.graphics()
+        if self.graphic == 1:
+            self.figure = Graphic(t_hist, [0,0.8], x_hist, y_hist)
+            self.figure.graphics()
 
     def ode_bif_diagram(self):
         print("ode bif diagram")
+        self.master = bif(self.model, self.bifp, self.mp, self.cap, self.simp, self.val_init)
+        S_hist, Q1_hist, max_hist, min_hist = self.master.bif_ode()
 
     def ode_parameter_region(self):
         print("ode parameter region")
@@ -159,7 +194,6 @@ class BCSwitch:
 
     def eca_theoretical_analysis(self):
         print("eca theoretical analysis")
-
 
 
 def main_ConPane():

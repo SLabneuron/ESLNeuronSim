@@ -18,7 +18,7 @@ from eca_basic import BSwitch as eca
 #Outputs
 from lib.graphic_bif import Graphic
 
-class BIF:
+class Bif:
     def __init__(self, mode):
         #mode = 0 ->ode
         if mode == 0:
@@ -98,7 +98,7 @@ if __name__ == "__main__":
 
     """test1"""
     # 0 = ode, 1 = eca
-    main = BIF(0)
+    main = Bif(0)
 
 
     #S: bifurcation parameter, max: max ox x., min: min of x
@@ -112,7 +112,7 @@ if __name__ == "__main__":
 
     """test2"""
     # 0 = ode, 1 = eca
-    main = BIF(1)
+    main = Bif(1)
 
 
     #S: bifurcation parameter, max: max ox x., min: min of x

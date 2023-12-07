@@ -131,8 +131,6 @@ class BCSwitch:
         self.x_hist = np.array([])
         self.y_hist = np.array([])
 
-        print("BCSwitch",self.sT, self.eT, self.h)
-        print(tau1, b1)
 
 
     def fx(self):

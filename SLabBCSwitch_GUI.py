@@ -20,7 +20,7 @@ from lib.graphic_basic import Graphic
 from SLabBCSwitch import BCSwitch as control
 from ode_basic import BCSwitch as ode
 from eca_basic import BSwitch as eca
-from analysis_bif import BIF
+from analysis_bif import Bif
 
 
 # BCSwitch Controller GUI
