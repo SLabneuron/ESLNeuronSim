@@ -11,7 +11,7 @@ BCSwitch controller
 #Libralies
 import tkinter as tk
 from tkinter import ttk
-import csv
+import pandas as pd
 import numpy as np
 import sys
 import os
@@ -99,38 +99,102 @@ class BCSwitch:
         self.t_hist = np.array([])
         self.x_hist = np.array([])
         self.y_hist = np.array([])
-        
+
         #make file
-        self.generate_file()
+        #self.generate_file()
+        self.create_directory()
 
 
-    def generate_hash(self):
-        self.model_name = {"model":self.model,}
-        self.target_name = {"target": self.target,}
-        hash_base = {**self.model_name, **self.target_name, **self.bifp, **self.mp, **self.cap}
-        hash_string = "_".join(f"{key}{value}" for key, value in hash_base.items())
-        return hashlib.md5(hash_string.encode()).hexdigest()
-    
-    def generate_file(self, data_dir="DATABASE"):
-        base_hash = self.generate_hash()
-        file_name = f"{base_hash}.csv"
-        file_path = os.path.join(data_dir, file_name)
+    def create_directory(self):
+        """Organize file for storage"""
+        # Database path
+        DATABASE_path = os.path.join("DATABASE","LIST1.csv")
+
+        # Read database
+        df = pd.read_csv(DATABASE_path)
+
+        # Preperation for determining directories
+        base_dir = os.getcwd() #current directory path
+
+        # Model-specific directory
+        model_dir = self.generate_model_directory(base_dir, self.model)
+
+        # Iterate over DataFrame rows and create directions
+        if df.empty:
+            # generate row
+            new_row = self.create_row_from_dicts([self.mp, self.cap, self.bifp], ["mp", "cap", "bifp"])
+            df = pd.concat([df, pd.DataFrame([new_row])], ignore_index=True)
+            
+            # generate dir_name
+            hash_dir = self.generate_hash_directory(model_dir, df.iloc[-1])
+            os.makedirs(hash_dir, exist_ok = True)
+            
+            # append row
+            print(type(df))
+            df = pd.concat([df, pd.DataFrame([new_row])], ignore_index = True)
+        else:
+            for index, row in df.iterrows():
+                print("Hi")
+                if all([self.row_matches(row, self.mp, "mp"),
+                    self.row_matches(row, self.cap, "cap"),
+                    self.row_matches(row, self.bifp, "bifp")
+                    ]):
+                    # Update directory or perform other actions
+                    nested_dir = self.create_nested_directory(model_dir, row)
+                else:
+                    # Generate hash and create directory if not exist
+                    hash_dir = self.generate_hash_directory(model_dir, row)
+                    os.makedirs(hash_dir, exist_ok = True)
+
+
+    def generate_model_directory(self, base_dir, model):
+        model_dir = os.path.join(base_dir, "DATABASE","eca" if model == 1 else "ode")
+        os.makedirs(model_dir, exist_ok = True)
+        return model_dir
+
+
+    def row_matches(self, row, param_dict, prefix):
+        for key,value in param_dict.items():
+            # Lambda 式の場合，適切に評価する
+            if callable(value):
+                value = str(value)
+            column_name = f"{prefix}_{key}"
+            if column_name not in row or str(row[column_name]) != value:
+                print("False")
+                return False
+        print("True")
+        return True
+
+
+    def create_nested_directory(self, base_dir, row):
+        # Create nested directory  structure based on row data
+        dir_parts = [row[col] for col in row if col.startswith(("mp_","bifp_", "cap_"))]
+        nested_dir = os.path.join(base_dir, *dir_parts)
+        os.makedirs(nested_dir, exist_ok = True)
+        return nested_dir
+
+
+    def generate_hash_directory(self, base_dir,row):
         
-        count = 1
-        while self.file_exists_in_dir(file_name, data_dir):
-            file_name = f"{base_hash}_{count}.csv"
-            file_path = os.path.join(data_dir, file_name)
-            count += 1
-        
-        return file_name
-    
-    def file_exists_in_dir(self, file_name, directory):
-        # Search for directory, and subdirectory, and subsubdir...
-        for dirpath, dirname, filenames in os.walk(directory):
-            if file_name in filenames:
-                return True
-        return False
-        
+        print(row)
+        print(row.index)
+        # Create directory name using hash
+        hash_string = "".join(str(row[col]) for col in row.index if col.startswith(("mp_","bifp_","cap_")))
+        hash_value = hashlib.md5(hash_string.encode()).hexdigest()
+        hash_dir = os.path.join(base_dir, hash_value)
+        return hash_dir
+
+
+    def add_prefix_to_dict_keys(self, d, prefix):
+        return {f"{prefix}_{key}": value for key, value in d.items()}
+
+
+    def create_row_from_dicts(self, dicts, prefixes):
+        new_row = {}
+        for d, prefix in zip(dicts, prefixes):
+            new_row.update(self.add_prefix_to_dict_keys(d, prefix))
+        return new_row
+
 
     def select(self):
         if (self.model == 0 and self.target == 0):
@@ -166,16 +230,20 @@ class BCSwitch:
             self.figure = Graphic(t_hist, [0,0.8], x_hist, y_hist)
             self.figure.graphics()
 
+
     def ode_bif_diagram(self):
         print("ode bif diagram")
         self.master = bif(self.model, self.bifp, self.mp, self.cap, self.simp, self.val_init)
         S_hist, Q1_hist, max_hist, min_hist = self.master.bif_ode()
 
+
     def ode_parameter_region(self):
         print("ode parameter region")
 
+
     def ode_phase_portrait(self):
         print("ode phase portrait")
+
 
     def ode_theoretical_analysis(self):
         print("ode theoretical analysis")
@@ -199,14 +267,14 @@ class BCSwitch:
 def main_ConPane():
     #initialization
     mode = 1
-    
+
     Q1_hist = 0.5
     S_hist = np.arange(0.5, 0.55, 0.001)
     bifp ={
         "Q1": Q1_hist,
         "S":S_hist,
     }
-    
+
     mp = {
         "tau1":1,
         "tau2":1,

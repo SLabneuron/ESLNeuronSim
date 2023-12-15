@@ -126,7 +126,7 @@ class BCSwitchGUI:
         self.simp_h = tk.Entry(root)
         self.simp_h.grid(row=6, column=3)
         self.simp_h.insert(0, "0.01")  # Default value
-        
+
         # Column 5: Initial Variables
         ttk.Label(root, text="Initial Variables").grid(row=0, column=4)
 
@@ -152,7 +152,7 @@ class BCSwitchGUI:
 
         # Run Simulation Button
         ttk.Button(root, text="Run Simulation", command=self.run_simulation).grid(row=7, column=0)
-        
+
         # End Protcol
         root.protocol("WM_DELETE_WINDOW", self.on_close)
 
