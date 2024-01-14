@@ -213,7 +213,7 @@ class BCSwitchGUI:
             "q": float(self.val_init_q.get()),
         }
 
-        # BCSwitchインスタンスの作成
+        # BCSwitchインスタンスの作成（call for SLabBCSwitch.py）
         bcs = control(model, target, graphic, bifp, mp, cap, simp, val_init)
         bcs.select()  # 選択した操作の実行
 

@@ -107,20 +107,23 @@ class BCSwitch:
 
     def create_directory(self):
         """Organize file for storage"""
-        # Database path
+        # Get Database path (\cwd\DATABASE\LIST1.csv)
         DATABASE_path = os.path.join("DATABASE","LIST1.csv")
 
         # Read database
         df = pd.read_csv(DATABASE_path)
 
-        # Preperation for determining directories
-        base_dir = os.getcwd() #current directory path
+        # Get current directory
+        base_dir = os.getcwd()
 
-        # Model-specific directory
+        # Get model directory
         model_dir = self.generate_model_directory(base_dir, self.model)
+        
 
         # Iterate over DataFrame rows and create directions
         if df.empty:
+            """If csv is empty, this is executed"""
+            print("empty")
             # generate row
             new_row = self.create_row_from_dicts([self.mp, self.cap, self.bifp], ["mp", "cap", "bifp"])
             df = pd.concat([df, pd.DataFrame([new_row])], ignore_index=True)
@@ -129,40 +132,63 @@ class BCSwitch:
             hash_dir = self.generate_hash_directory(model_dir, df.iloc[-1])
             os.makedirs(hash_dir, exist_ok = True)
             
-            # append row
-            print(type(df))
+            # write row to csv
             df = pd.concat([df, pd.DataFrame([new_row])], ignore_index = True)
+            df.to_csv(DATABASE_path)
+            #print(df)
+            
         else:
             for index, row in df.iterrows():
-                print("Hi")
                 if all([self.row_matches(row, self.mp, "mp"),
                     self.row_matches(row, self.cap, "cap"),
                     self.row_matches(row, self.bifp, "bifp")
                     ]):
+                    # check
+                    print("all")
                     # Update directory or perform other actions
                     nested_dir = self.create_nested_directory(model_dir, row)
                 else:
-                    # Generate hash and create directory if not exist
+                    # Generate1 hash and create directory if not exist
                     hash_dir = self.generate_hash_directory(model_dir, row)
                     os.makedirs(hash_dir, exist_ok = True)
+                    df.to_csv(DATABASE_path)
+                    
+                    # check
+                    print("else")
 
 
     def generate_model_directory(self, base_dir, model):
+        """
+        Content:
+        If the directories ode and eca do not exist, create them
+
+        Describe:
+        argument:   base_dir,
+                    model,
+        
+        return:     model_dir (\current_dir\model_dir)
+        """
+        
+        # Determine dir path
         model_dir = os.path.join(base_dir, "DATABASE","eca" if model == 1 else "ode")
+        # Make dir
         os.makedirs(model_dir, exist_ok = True)
+        
         return model_dir
 
 
     def row_matches(self, row, param_dict, prefix):
+        """
+        Need to dexcribe
+        """
+        
         for key,value in param_dict.items():
             # Lambda 式の場合，適切に評価する
             if callable(value):
                 value = str(value)
             column_name = f"{prefix}_{key}"
             if column_name not in row or str(row[column_name]) != value:
-                print("False")
                 return False
-        print("True")
         return True
 
 
@@ -175,9 +201,6 @@ class BCSwitch:
 
 
     def generate_hash_directory(self, base_dir,row):
-        
-        print(row)
-        print(row.index)
         # Create directory name using hash
         hash_string = "".join(str(row[col]) for col in row.index if col.startswith(("mp_","bifp_","cap_")))
         hash_value = hashlib.md5(hash_string.encode()).hexdigest()
@@ -278,14 +301,14 @@ def main_ConPane():
     mp = {
         "tau1":1,
         "tau2":1,
-        "b1":lambda Q1 = bifp[Q1]: 0.13*(1+Q1),
+        "b1":lambda Q1 = bifp["Q1"]: 0.13*(1+Q1),
         "b2":0,
         "WE11":3.9,
         "WE12":0,
         "WE21":3.0,
         "WE22":3.0,
         "WI11":0,
-        "WI12":lambda Q1 = bifp[Q1]: 0.5*Q1,
+        "WI12":lambda Q1 = bifp["Q1"]: 0.5*Q1,
         "WI21":0,
         "WI22":0,
     }
