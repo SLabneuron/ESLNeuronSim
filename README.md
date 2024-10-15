@@ -14,3 +14,6 @@ Python 3.11
 
 ## 4. Development Planning
 ・Update the file organization
+
+## Other
+updates
