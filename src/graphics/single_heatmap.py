@@ -9,7 +9,7 @@ import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.colors import ListedColormap
-from eca_basic import BSwitch
+from src.method.eca.eca_basic import BSwitch
 
 class HeatmapGenerator:
     def __init__(self, filenames):

@@ -9,7 +9,7 @@ Created on Sat Oct  7 11:49:26 2023
 import csv
 import numpy as np
 import matplotlib.pyplot as plt
-from eca_basic import BSwitch
+from src.method.eca.eca_basic import BSwitch
 
 class Graphic_attractor:
     def __init__(self, files):

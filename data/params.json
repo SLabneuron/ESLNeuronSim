@@ -1,0 +1,62 @@
+{
+
+    "bifurcation params":{
+
+        "Q1": 0.5,
+        "S" : 0.5
+    },
+
+    "model params":{
+
+        "tau1": 1,
+        "tau2": 1,
+        "b1_equ": "lambda Q1=self.params['Q1']: 0.13 * (1 + Q1)",
+        "b2": 0,
+        "WE11": 3.9,
+        "WE12": 0,
+        "WE21": 3.0,
+        "WE22": 3.0,
+        "WI11": 0,
+        "WI12_equ": "lambda Q1=self.params['Q1']: 0.5 * Q1",
+        "WI21": 0,
+        "WI22": 0
+    },
+
+    "CA set":{
+        "init_X": 24,
+        "init_Y": 32,
+        "init_P": 0,
+        "init_Q": 0
+    },
+
+    "CA params":{
+
+
+        "Ns": 6,
+        "Ms": 6,
+        "N": 64,
+        "M": 64,
+        "s1": 64,
+        "s2": 64,
+        "Tc": 0.01,
+        "Tx_rat": 0.01,
+        "Tx_sqrt": 1.713,
+        "Ty_rat": 0.01,
+        "Ty_sqrt": 2.313
+    },
+
+    "NI set":{
+
+        "init_x" : 0.5,
+        "init_y" : 0.3,
+        "h" : 0.01
+    },
+
+    "sim params":{
+
+        "sT": 0,
+        "eT": 10
+    }
+
+
+}

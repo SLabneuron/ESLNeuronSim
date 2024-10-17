@@ -9,7 +9,7 @@ Created on Fri Oct  6 09:21:02 2023
 import numpy as np
 import csv
 
-from eca_basic import BSwitch
+from src.method.eca.eca_basic import BSwitch
 
 class Attractor:
     def __init__(self):

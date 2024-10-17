@@ -9,7 +9,7 @@ Created on Tue Oct 24 14:21:15 2023
 import csv
 import numpy as np
 import matplotlib.pyplot as plt
-from eca_basic import BSwitch
+from src.method.eca.eca_basic import BSwitch
 
 class EVSearch:
     def __init__(self):

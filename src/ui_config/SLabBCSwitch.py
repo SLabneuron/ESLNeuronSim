@@ -18,9 +18,9 @@ import os
 import hashlib
 
 #Local Libralies
-from ode_basic import BCSwitch as ode
-from eca_basic import BSwitch as eca # Unchainged Object
-from analysis_bif import Bif
+from src.method.euler.ode_basic import BCSwitch as ode
+from src.method.eca.eca_basic import BSwitch as eca # Unchainged Object
+from src.analyses.analysis_bif import Bif
 from lib.graphic_basic import Graphic
 
 
