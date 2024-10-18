@@ -26,65 +26,7 @@ from lib.graphic_basic import Graphic
 
 
 class BCSwitch:
-    """
-    ** model
-    0: ode, 1: eca
 
-    ** target:
-    0: time waveform, 1:bif diagram, 2:parameter region
-    3: phase portrait, 4: Theoretical Analysis(plan)
-
-    ** graphic:
-    0: off, 1: on
-
-    ** bifp (bifurcation parameters)
-    They represent bifurcation parameter
-    bifp = [[Q1,...], [S,...]]
-
-
-    ** mp (model parameters)
-    They represent target model parameter
-        {
-        "tau1":,
-        "tau2":,
-        "b1":,
-        "b2":,
-        "WE11":,
-        "WE12":,
-        "WE21":,
-        "WE22":,
-        "WI11":,
-        "WI12":,
-        "WI21":,
-        "WI22":,
-        }
-
-    ** cap (ca parameter)
-    They represent CA parameter
-        s = ?? # unit of scaling
-        {
-        "N":,
-        "M":,
-        "s1":,
-        "s2":,
-        "Tc":,
-        "Tx":,
-        "Ty":,
-        }
-
-    ** simp (simulation parameter)
-        {
-        "sT":,
-        "eT":,
-        }
-
-    ** val_init
-        {
-        "x":,
-        "y":,
-        }
-
-    """
     def __init__(self, model, target, graphic, bifp, mp, cap, simp, val_init):
         self.model = model
         self.target = target

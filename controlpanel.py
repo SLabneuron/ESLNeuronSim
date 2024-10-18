@@ -15,6 +15,8 @@ Contents:
 
 import tkinter as tk
 from tkinter import ttk
+import os
+import pandas as pd
 
 # import my library
 
@@ -69,6 +71,8 @@ class ControlPanel:
 
     def set_up(self):
 
+        """ Set up parameter """
+
         # Parameter Import
         params = json_import(["bifurcation params",
                                 "model params",
@@ -79,6 +83,8 @@ class ControlPanel:
 
         # str equation make available
         resolve_params = param_resolver(params)
+
+        """ Set up path """
 
         print(resolve_params)
 
