@@ -75,7 +75,7 @@ class ControlPanel:
 
         # Parameter Import
         params = json_import(["bifurcation params",
-                                "model params",
+                                "set 1",
                                 "CA set",
                                 "CA params",
                                 "NI set",
@@ -86,8 +86,6 @@ class ControlPanel:
 
         """ Set up path """
 
-        print(resolve_params)
-
         # Set up window
         WindowSetup(self.root, resolve_params)
 
@@ -95,6 +93,6 @@ class ControlPanel:
 
 
 if __name__ == "__main__":
-    
+
     # Execute simulator
     sim = ControlPanel()

@@ -2,25 +2,78 @@
 
     "bifurcation params":{
 
-        "Q1": 0.5,
+        "Q": 0.5,
         "S" : 0.5
     },
 
-    "model params":{
+    "set 1":{
 
         "tau1": 1,
         "tau2": 1,
-        "b1_equ": "lambda Q1=self.params['Q1']: 0.13 * (1 + Q1)",
-        "b2": 0,
+        "b1_equ": "lambda Q=self.params['Q']: 0.13 * (1 + Q)",
+        "b2_equ": "lambda :0",
         "WE11": 3.9,
         "WE12": 0,
         "WE21": 3.0,
         "WE22": 3.0,
         "WI11": 0,
-        "WI12_equ": "lambda Q1=self.params['Q1']: 0.5 * Q1",
+        "WI12_equ": "lambda Q=self.params['Q']: 0.5 * Q",
         "WI21": 0,
         "WI22": 0
     },
+
+    "set 2":{
+
+        "tau1": 1,
+        "tau2": 10,
+        "b1_equ": "lambda Q=self.params['Q']: 0.13 * (1 + Q)",
+        "b2_equ": "lambda: 0",
+        "WE11": 3.9,
+        "WE12": 0,
+        "WE21": 3.0,
+        "WE22": 3.0,
+        "WI11": 0,
+        "WI12_equ": "lambda Q=self.params['Q']: 0.5 * Q",
+        "WI21": 0,
+        "WI22": 0
+    },
+
+    "set 3":{
+
+        "tau1": 1,
+        "tau2": 1,
+        "b1_equ": "lambda Q=self.params['Q']: 0.13 * (1 + Q)",
+        "b2_equ": "lambda :0",
+        "WE11": 3.9,
+        "WE12": 0,
+        "WE21": 1,
+        "WE22": 3.8,
+        "WI11": 0,
+        "WI12_equ": "lambda Q=self.params['Q']: 0.5 * Q",
+        "WI21": 0,
+        "WI22": 0
+    },
+
+    "set 4":{
+
+        "tau1": 1,
+        "tau2": 1,
+        "b1_equ": "lambda Q=self.params['Q']: 0.13 * (1 - Q)",
+        "b2_equ": "lambda Q=self.params['Q']: 0.26 * Q",
+        "WE11": 3.9,
+        "WE12": 0.6,
+        "WE21": 0,
+        "WE22": 4.2,
+        "WI11": 0,
+        "WI12_equ": "lambda: 0",
+        "WI21": 1,
+        "WI22": 0
+    },
+
+
+
+
+
 
     "CA set":{
         "init_X": 24,

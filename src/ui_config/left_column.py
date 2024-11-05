@@ -12,9 +12,13 @@ Contents:
 
 """
 
-# import standard libralies
+# import standard libraries
 import tkinter as tk
 from tkinter import ttk
+
+# import my libraries
+from src.utils.json_import import json_import
+from src.utils.param_resolver import param_resolver
 
 class LeftColumn:
 
@@ -26,12 +30,16 @@ class LeftColumn:
 
     def set_widget(self):
 
-        # contorol of size of column width
+        # main frame
+        fr = ttk.Frame(self.master.root)
+        fr.grid(row=0, column=0, sticky = "nw")
+
+        # control of size of column width
         size=300
 
         # For simulation condition [0, 0]
 
-        row_frame0 = ttk.Frame(self.master.root)
+        row_frame0 = ttk.Frame(fr)
         row_frame0.grid(row=0, column=0, padx=2, pady=2)
 
         row_frame0.columnconfigure(0, minsize=size)
@@ -40,7 +48,7 @@ class LeftColumn:
 
         # initial state and time step (neumerical integration) [0, 1]
 
-        row_frame1 = ttk.Frame(self.master.root)
+        row_frame1 = ttk.Frame(fr)
         row_frame1.grid(row=1, column=0, padx=2, pady=2)
 
         row_frame1.columnconfigure(0, minsize=size)
@@ -49,7 +57,7 @@ class LeftColumn:
 
         # For parameter setting [0, 2]
 
-        row_frame2 = ttk.Frame(self.master.root)
+        row_frame2 = ttk.Frame(fr)
         row_frame2.grid(row=2, column=0, padx=2, pady=2, sticky=tk.W)
 
         row_frame2.columnconfigure(0, minsize=size)
@@ -155,7 +163,7 @@ class LeftColumn:
 
         self.master.init_widgets["fr_ni"] = fr_ni
 
-        """ for neumerical integration """
+        """ for cellular automaton """
 
         # master frame
         fr_ca = ttk.Frame(row_fr, style="Custom1.TFrame")
@@ -225,7 +233,7 @@ class LeftColumn:
 
         """ Set widgets"""
 
-        atrs = ["Q1", "S"]
+        atrs = ["Q", "S"]
 
         for index, n in enumerate(atrs):
 
@@ -237,6 +245,41 @@ class LeftColumn:
             entry.insert(0, self.master.params[n])      # Default value
 
             self.master.entries[n] = entry
+
+        """ Parameter set select """
+
+        # model select
+        tex = ttk.Label(fr, text="Param Set", style="Custom1.TLabel")
+        tex.grid(row=0, column=4, padx=2, pady=2, sticky=tk.W)
+
+        def on_combobox_select(event):
+
+            select = combo.get()
+
+            """ Set up parameter """
+
+            # Parameter Import
+            params = json_import(["bifurcation params",
+                                        select,
+                                        "CA set",
+                                        "CA params",
+                                        "NI set",
+                                        "sim params"])
+
+            # str equation make available
+            self.master.params = param_resolver(params)
+
+            # parameter update
+            self.master.parameter_update()
+            
+
+
+        combo_value = ["set 1", "set 2", "set 3", "set 4"]
+        combo = ttk.Combobox(fr, values=combo_value, width=10)
+        combo.grid(row=0, column=5, padx=2, pady=2)
+        combo.set("set 1")  # Default value
+        combo.bind("<<ComboboxSelected>>", on_combobox_select)
+        self.master.combos["param set"] = combo
 
 
     def set_ca_param_frame(self, widget, r):
@@ -308,9 +351,9 @@ class LeftColumn:
     def update_power_label(self, sv, key):
 
         value = sv.get()
-        
+
         lut = {"Ns": "N", "Ms": "M", "s1_s": "s1", "s2_s": "s2"}
-        
+
         try:
             result = 2 ** int(value)
             self.master.power_labels[key].config(text=f"= {result}")

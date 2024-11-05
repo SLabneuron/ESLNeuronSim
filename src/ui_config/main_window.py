@@ -2,11 +2,14 @@
 
 """
 
-Created on Thu Nov 30 13:52
+Created on: 2023-11-30
+Updated on: 2024-10-22
 
 @author: SLab
 
-BCSwitch controller
+Contents:
+
+
 """
 
 # import standard libralies
@@ -19,6 +22,7 @@ import sys
 
 # import local libralies
 from src.ui_config.left_column import LeftColumn
+from src.ui_config.center_column import CenterColumn
 
 #from src.ui_config.SLabBCSwitch import BCSwitch as control
 #from src.method.euler.ode_basic import BCSwitch as ode
@@ -37,6 +41,8 @@ class WindowSetup:
         self.entries = {}
         self.combos = {}
         self.labels = {}
+        self.figs = {}
+        self.axes = {}
 
         self.init_widgets = {}  # For store init frame widgets
 
@@ -47,15 +53,16 @@ class WindowSetup:
 
         # set left column
         LeftColumn(self).set_widget()
+        self.parameter_update()
 
         # set center column
-        
+        CenterColumn(self).set_widget()
+
 
         # set right column
 
 
-
-    def run_simulation(self):
+    def parameter_update(self):
 
         """ Parameter update """
 
@@ -79,8 +86,14 @@ class WindowSetup:
 
         # resolve lambda equ
         self.params["b1"] = eval(self.params["b1_equ"])()
+        self.params["b2"] = eval(self.params["b2_equ"])()
         self.params["WI12"] = eval(self.params["WI12_equ"])()
 
+
+    def run_simulation(self):
+
+        # update values
+        self.parameter_update()
 
         """ Execute Simulation """
 

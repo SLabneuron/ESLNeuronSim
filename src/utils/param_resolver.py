@@ -19,7 +19,7 @@ def param_resolver(params):
 
         if isinstance(value, str):
             
-            if key not in ["b1_equ", "WI12_equ"]:
+            if key not in ["b1_equ", "b2_equ", "WI12_equ"]:
 
                 params[key] = eval(value)
 
