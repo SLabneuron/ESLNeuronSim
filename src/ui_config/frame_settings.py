@@ -20,7 +20,7 @@ from tkinter import ttk
 from src.utils.json_import import json_import
 from src.utils.param_resolver import param_resolver
 
-class LeftColumn:
+class SimSettings:
 
     def __init__(self, master):
 

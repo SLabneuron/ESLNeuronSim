@@ -46,7 +46,7 @@ class ControlPanel:
         """ size setting """
 
         # main size
-        self.root.geometry("880x600")
+        self.root.geometry("1000x600")
 
         """ Style Settings """
 
