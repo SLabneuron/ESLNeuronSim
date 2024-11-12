@@ -32,7 +32,7 @@ class SimSettings:
 
         # main frame
         fr = ttk.Frame(self.master.root)
-        fr.grid(row=0, column=0, sticky = "nw")
+        fr.grid(row=0, rowspan=2, column=0, sticky = "nw")
 
         # control of size of column width
         size=300

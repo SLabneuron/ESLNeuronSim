@@ -23,7 +23,7 @@ import sys
 # import local libralies
 from src.ui_config.frame_settings import SimSettings
 from src.ui_config.frame_sys_overview import SysOverview
-
+from src.ui_config.frame_results import TimeEvol
 
 #from src.ui_config.SLabBCSwitch import BCSwitch as control
 #from src.method.euler.ode_basic import BCSwitch as ode
@@ -41,6 +41,7 @@ class WindowSetup:
         self.params = params
         self.entries = {}
         self.combos = {}
+        self.radio_buttons = {}
         self.labels = {}
         self.figs = {}
         self.axes = {}
@@ -53,15 +54,15 @@ class WindowSetup:
 
     def set_widget(self):
 
-        # set left column
+        # set (row, col) = (0:1, 0)
         SimSettings(self).set_widget()
         self.parameter_update()
 
-        # set center column
+        # set (row, col) = (0, 1)
         SysOverview(self).set_widget()
 
-
-        # set right column
+        # set (row, col) = (1, 1)
+        TimeEvol(self).set_widget()
 
 
     def parameter_update(self):

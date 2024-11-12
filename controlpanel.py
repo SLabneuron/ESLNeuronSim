@@ -18,6 +18,8 @@ from tkinter import ttk
 import os
 import pandas as pd
 
+import matplotlib.pyplot as plt
+
 # import my library
 
 
@@ -67,6 +69,12 @@ class ControlPanel:
         style.configure("Custom1.TLabel",
                         background = "lightgray",
                         foreground = "black")
+
+        # radiobutton style1: "Custom1.TRadiobutton"
+        style.configure("Custom1.TRadiobutton",
+                        background = "lightgray")
+        
+        plt.rcParams.update({"font.size":8})
 
 
     def set_up(self):

@@ -24,13 +24,16 @@ from tkinter import ttk
 
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 from matplotlib.figure import Figure
-import matplotlib.pyplot as plt
+
 
 
 # import my library
 
 from src.analyses.analysis_null_cline import Nullcline
 from src.analyses.analysis_Jacobian import SolveNonlinear as SolN
+
+from src.graphics.graphic_phase_plain import GraphicPhasePlain as GraphicPP
+
 
 
 class SysOverview:
@@ -47,6 +50,8 @@ class SysOverview:
 
     def set_widget(self):
 
+        """ Config Main Frame of System Dynamic Overview """
+
         # main frame
         fr = ttk.Frame(self.master.root)
         fr.grid(row=0, column=1, sticky = "nw")
@@ -59,30 +64,32 @@ class SysOverview:
         frame = ttk.Frame(fr, style="Custom1.TFrame")
         frame.grid(row=1, column=0, padx=2, pady=2, sticky = "nw")
 
+        # column and row configure
         frame.columnconfigure(0, minsize=220)
-        frame.columnconfigure(1, minsize=330)
+        frame.columnconfigure(1, minsize=440)
         frame.rowconfigure(1, minsize=220)
 
-        """ col 0: phase plane """
+        """ Set Overview """
+
+        # set phase plain including nullclines and node information (sink, source, saddle)
         self.phase_plain(frame)
+
+        # set table for output console
+        self.output_console(frame)
 
         """ Event binding """
 
-        # Set entry bind update
+        # ttk.Combobox
         self.master.combos["model"].bind("<<ComboboxSelected>>", lambda event: self.update_display())
         self.master.combos["param set"].bind("<<ComboboxSelected>>", lambda event: self.update_display(), add="+")
 
+        # ttk.Entry
         self.master.entries["Q"].bind("<Return>", lambda event: self.update_display())
         self.master.entries["S"].bind("<Return>", lambda event: self.update_display())
 
-        """ col 1: output console """
-        self.output_console(frame)
+        """ Show init results """
 
-        """ show init results """
-        
-        # show display
         self.update_display()
-
 
 
     def output_console(self, frame):
@@ -144,65 +151,42 @@ class SysOverview:
 
     def phase_plain(self, frame):
 
-        # Title
+        """
+        Summary:
+            Create graphic space of vector field information
+
+        return:
+            self.master.axes["vfi"]
+
+        """
+
+        # Label
         title = ttk.Label(frame, text="Phase Plane", style="Custom1.TLabel")
         title.grid(row=0, column=0, padx=2, pady=2, sticky="nw")
 
         """ for neumerical integration """
 
-        # master frame
-        fr_ni = ttk.Frame(frame, style="Custom2.TFrame")
+        # Frame
+        fr = ttk.Frame(frame, style="Custom2.TFrame")
+        fr.grid(row=1, column=0, padx=2, pady=2)
 
-        # make plot space
-        fig_ni = Figure(figsize=(2.2, 2.1), facecolor="lightgray", tight_layout=True)
-        plt.rcParams.update({'font.size':8})
+        # Graph Space
+        fig = Figure(figsize=(2.2, 2.1), facecolor="lightgray", tight_layout=True)
 
-        # make canvas including fig
-        canvas = FigureCanvasTkAgg(fig_ni, master = fr_ni)
+        # Add plot of phase_portrait
+        ax = fig.add_subplot()
+
+        # Canvas
+        canvas = FigureCanvasTkAgg(fig, master = fr)
         canvas.get_tk_widget().grid(row=0, column=0, padx=2, pady=2, sticky="wn")
 
-        ax = fig_ni.add_subplot()
-        ax.set_xlim(0, 1)
-        ax.set_ylim(0, 1)
-        ax.set_xlabel("Y")
-        ax.set_ylabel("X")
-
-        self.master.axes["ax_ni"] = ax
-
-        """ for cellular automaton """
-
-        # master frame
-        fr_ca = ttk.Frame(frame, style="Custom2.TFrame")
-
-        # make plot space
-        fig_ca = Figure(figsize=(2.2, 2.1), facecolor="lightgray", tight_layout=True)
-        plt.rcParams.update({'font.size':8})
-
-        # make canvas including fig
-        canvas = FigureCanvasTkAgg(fig_ca, master = fr_ca)
-        canvas.get_tk_widget().grid(row=0, column=0, padx=2, pady=2, sticky="nw")
-
-        ax = fig_ca.add_subplot()
-        ax.set_xlim(0, self.master.params["N"])
-        ax.set_ylim(0, self.master.params["N"])
-        ax.set_xlabel("Y")
-        ax.set_ylabel("X")
-
-        self.master.axes["ax_ca"] = ax
-
-        # store frames for later access
-        self.fr_ni = fr_ni
-        self.fr_ca = fr_ca
+        # Store ax
+        self.master.axes["vfi"] = ax
 
 
     def update_display(self):
 
-        # Get the value from the Combobox widget
-        mode = self.master.combos["model"].get()
-
-        # Remove both frames initially
-        self.fr_ni.grid_forget()
-        self.fr_ca.grid_forget()
+        """ Calculate nullclines and nodes """
 
         # Calculate nullcline
         self.master.parameter_update()
@@ -216,79 +200,27 @@ class SysOverview:
         self.eset_y = inst.equilibrium_points[:, 1]
         self.eset_x = inst.equilibrium_points[:, 0]
 
-        """ Analysis results """
-
         # Analysis nonlinear characteristics
         self.results = SolN(self.eset_x, self.eset_y, self.master.params)
 
         # fill in tables
         self.fill_in_table(self.master.tables["sys overview"])
 
-        """ Phase Plane """
+        """ Graphic """
 
-        # Display the appropriate frame based on the mode
-        if mode in ["fem", "rk4", "ode45"]:
-            self.fr_ni.grid(row=1, column=0, padx=2, pady=2, sticky="nw")
+        # Get mode
+        axes = self.master.axes["vfi"]
 
-            # graphics of nullcline
-            ax= self.master.axes["ax_ni"]
-            ax.clear()
-            ax.set_xlim(0, 1)
-            ax.set_ylim(0, 1)
-            ax.set_xlabel("y")
-            ax.set_ylabel("x")
-            ax.scatter(x2_null, x1_null, marker=".", s=0.5)
-            ax.scatter(y2_null, y1_null, marker=".", s=0.5)
+        # Set Graph Space
+        PP = GraphicPP(self.master, axes)
 
-            # set equilibrium
-            for i in range(len(self.eset_x)):
+        # Plot nullclines
+        PP.plot_nullcline(x2_null, x1_null, y2_null, y1_null)
 
-                # sink
-                if self.results.classifications[i] == "sink":
-                    ax.scatter(self.eset_y[i], self.eset_x[i], marker="o", c="red", s= 20)
+        # Plot nodes (sink, source, saddle)
+        PP.plot_nodes(self.eset_x, self.eset_y, self.results.classifications)
 
-                # source
-                elif self.results.classifications[i] == "source":
-                    ax.scatter(self.eset_y[i], self.eset_x[i], marker="x", c="blue", s= 20)
-
-                # saddle
-                elif self.results.classifications[i] == "saddle":
-                    ax.scatter(self.eset_y[i], self.eset_x[i], marker="^", c="green", s= 20)
-
-            ax.figure.canvas.draw()
-
-
-        elif mode in ["SynCA", "ErCA"]:
-            self.fr_ca.grid(row=1, column=0, padx=2, pady=2, sticky="nw")
-
-            # graphics of nullcline
-            ax = self.master.axes["ax_ca"]
-            ax.clear()
-            ax.set_xlim(0, self.master.params["N"])
-            ax.set_ylim(0, self.master.params["N"])
-            ax.set_xlabel("Y")
-            ax.set_ylabel("X")
-            ax.scatter(x2_null*self.master.params["N"], x1_null*self.master.params["N"], marker=".", s=0.1)
-            ax.scatter(y2_null*self.master.params["N"], y1_null*self.master.params["N"], marker=".", s=0.1)
-
-            # set equilibrium
-            for i in range(len(self.eset_x)):
-
-                # sink
-                if self.results.classifications[i] == "sink":
-                    ax.scatter(self.eset_y[i]*self.master.params["s1"], self.eset_x[i]*self.master.params["s2"], marker="o", c="red", s= 20)
-
-                # source
-                elif self.results.classifications[i] == "source":
-                    ax.scatter(self.eset_y[i]*self.master.params["s1"], self.eset_x[i]*self.master.params["s2"], marker="x", c="blue", s= 20)
-
-                # saddle
-                elif self.results.classifications[i] == "saddle":
-                    ax.scatter(self.eset_y[i]*self.master.params["s1"], self.eset_x[i]*self.master.params["s2"], marker="^", c="green", s= 20)
-
-            ax.figure.canvas.draw()
-
-        else:
-            pass
+        # Graphics
+        axes.figure.canvas.draw()
 
 

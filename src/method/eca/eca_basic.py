@@ -12,6 +12,7 @@ from lib.graphic_basic import Graphic
 
 class BSwitch:
     def __init__(self, SYSPARA, init_x, init_y, init_P, init_Q, sTime, eTime, Q1, S):
+
         #state variables
         self.x_previous = self.x_next = init_x
         self.y_previous = self.y_next = init_y
@@ -19,7 +20,7 @@ class BSwitch:
         self.Q_previous = self.Q_next = init_Q
         self.phx_previous = self.phx_next = 0
         self.phy_previous = self.phy_next = 0
-        
+
         #Time evolution
         self.T = 0
         self.sT = sTime

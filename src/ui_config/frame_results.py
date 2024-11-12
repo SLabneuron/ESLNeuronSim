@@ -8,7 +8,7 @@ Created on: 2024-11-11
 
 Contents:
 
-    Results Frame
+    Results Frame: Time Evolution
 
     (ODE)
         - time waveforms
@@ -37,169 +37,194 @@ import numpy as np
 # import my library
 
 from src.analyses.analysis_null_cline import Nullcline
-from src.analyses.analysis_Jacobian import SolveNonlinear as SolN
 
+from src.graphics.graphic_time_waveform import GraphicTimeWaveform as GraphicTW
+from src.graphics.graphic_phase_plain import GraphicPhasePlain as GraphicPP
 
-class SysOverview:
+class TimeEvol:
 
     def __init__(self, master):
 
         # get parent class
         self.master = master
 
-        # phase portrait
-        self.fr_ni = None
-        self.fr_ca = None
 
 
     def set_widget(self):
 
         # main frame
         fr = ttk.Frame(self.master.root)
-        fr.grid(row=0, column=1, sticky = "nw")
+        fr.grid(row=1, column=1, sticky = "nw")
 
         # title
-        title = ttk.Label(fr, text="System Dynamic Overview")
+        title = ttk.Label(fr, text="Results: Time Evolution")
         title.grid(row=0, column=0, padx=2, pady=2, sticky="nsew")
 
         # set frame
         frame = ttk.Frame(fr, style="Custom1.TFrame")
         frame.grid(row=1, column=0, padx=2, pady=2, sticky = "nw")
 
-        frame.columnconfigure(0, minsize=220)
-        frame.columnconfigure(1, minsize=330)
-        frame.rowconfigure(1, minsize=220)
+        """ Results Frame """
+        self.sets_results_frame(frame)
 
-        """ col 0: phase plane """
-        self.phase_plain(frame)
-
-        """ Event binding """
-
-        # Set entry bind update
-        self.master.combos["model"].bind("<<ComboboxSelected>>", lambda event: self.update_display())
-        self.master.combos["param set"].bind("<<ComboboxSelected>>", lambda event: self.update_display(), add="+")
-
-        self.master.entries["Q"].bind("<Return>", lambda event: self.update_display())
-        self.master.entries["S"].bind("<Return>", lambda event: self.update_display())
-
-        """ col 1: output console """
-        self.output_console(frame)
-
-        """ show init results """
-        
-        # show display
-        self.update_display()
+        # set graph areas
+        self.update_graphics()
 
 
+    def sets_results_frame(self, frame):
 
-    def output_console(self, frame):
+        """
+        Summary:
+            Create graphic space of phase portraits
 
-        # Title
-        title = ttk.Label(frame, text="Output Console (Stability)", style="Custom1.TLabel")
-        title.grid(row=0, column=1, padx=2, pady=2, sticky="nw")
+        Contents:
+            Time waveforms
+            Phase portrait
+            Internal phase of sw
 
-        """ for output systematic information """
+        """
 
-        # tree
-        tree = ttk.Treeview(frame, columns=("No.", "coords", "lambda_1", "lambda_2", "state"), show="headings")
+        self.create_time_waveforms(frame)
 
-        # Configs: column header
-        tree.heading("No.", text="No.")
-        tree.heading("coords", text="coords")
-        tree.heading("lambda_1", text="λ_1")
-        tree.heading("lambda_2", text="λ_2")
-        tree.heading("state", text="state")             # state \in [sink, source, saddle]
+        self.create_phase_portrait(frame)
 
-        # Configs: column widths
-        tree.column("No.", width=30, anchor="center")
-        tree.column("coords", width=120, anchor="center")
-        tree.column("lambda_1",width=100, anchor="center")
-        tree.column("lambda_2",width=100, anchor="center")
-        tree.column("state", width=50, anchor="center")
-
-        # Grid Tree
-        tree.grid(row=1, column=1, padx=2, pady=2, sticky="nw")
-        self.master.tables["sys overview"] = tree
+        self.create_internal_phase_of_sw(frame)
 
 
-    def fill_in_table(self, tree):
+    def create_time_waveforms(self, frame):
 
-        # data case
-        data =  [
-            ["-", "-", "-",  "-", "-"],
-            ["-", "-", "-",  "-", "-"],
-            ["-", "-", "-",  "-", "-"],
-            ["-", "-", "-",  "-", "-"],
-            ["-", "-",  "-", "-", "-"]
-        ]
+        """
+        Summary:
+            Create graphic space of waveforms
 
-        for i in range(len(self.results.ls)):
-            data[i] = [f"{i}", f"({self.eset_x[i]:.3f},{self.eset_y[i]:.3f})",
-                    f"{self.results.eigenvalues[i][0]:.3f}",
-                    f"{self.results.eigenvalues[i][1]:.3f}",
-                    f"{self.results.classifications[i]}"
-                    ]
+        return:
+            self.master.axes["waveform1"]
+            self.master.axes["waveform2"]
 
-        # delete
-        for item in tree.get_children():
-            tree.delete(item)
+        """
 
-        # Fill in
-        for i, row in enumerate(data, 1):
-            tree.insert("", tk.END, values=row)
+        # Label
+        title = ttk.Label(frame, text = "Time Waveforms", style="Custom1.TLabel")
+        title.grid(row=0, column=0, padx=2, pady=2)
+
+        # Frame
+        fr = ttk.Frame(frame, style="Custom2.TFrame")
+        fr.grid(row=1, column=0, padx=2, pady=2)
+
+        # Graph Space
+        fig = Figure(figsize=(2.2, 2.1), facecolor="lightgray", tight_layout=True)
+
+        # Add plot of waveform 1, 2
+        waveform1 = fig.add_subplot(2, 1, 1)
+        waveform2 = fig.add_subplot(2, 1, 2)
+
+        # Canvas
+        canvas = FigureCanvasTkAgg(fig, master=fr)
+        canvas.get_tk_widget().grid(row=0, column=0)
+
+        # Store self.axes
+        self.master.axes["waveform1"] = waveform1
+        self.master.axes["waveform2"] = waveform2
 
 
-    def phase_plain(self, frame):
+    def create_phase_portrait(self, frame):
 
-        # Title
-        title = ttk.Label(frame, text="Phase Plane", style="Custom1.TLabel")
-        title.grid(row=0, column=0, padx=2, pady=2, sticky="nw")
+        """
+        Summary:
+            Create graphic space of phase portraits
 
-        """ for neumerical integration """
+        return:
+            self.master.axes["phase_portrait"]
 
-        # master frame
-        fr_ni = ttk.Frame(frame, style="Custom2.TFrame")
+        """
 
-        # make plot space
-        fig_ni = Figure(figsize=(2.2, 2.1), facecolor="lightgray", tight_layout=True)
-        plt.rcParams.update({'font.size':8})
+        # Label
+        title = ttk.Label(frame, text = "Phase Portrait", style="Custom1.TLabel")
+        title.grid(row=0, column=1, padx=2, pady=2)
 
-        # make canvas including fig
-        canvas = FigureCanvasTkAgg(fig_ni, master = fr_ni)
-        canvas.get_tk_widget().grid(row=0, column=0, padx=2, pady=2, sticky="wn")
+        # Frame
+        fr = ttk.Frame(frame, style="Custom2.TFrame")
+        fr.grid(row=1, column=1, padx=2, pady=2)
 
-        ax = fig_ni.add_subplot()
-        ax.set_xlim(0, 1)
-        ax.set_ylim(0, 1)
-        ax.set_xlabel("Y")
-        ax.set_ylabel("X")
+        # Graph Space
+        fig = Figure(figsize=(2.2, 2.1), facecolor="lightgray", tight_layout=True)
 
-        self.master.axes["ax_ni"] = ax
+        # Add plot of phase_portrait
+        phase_portrait = fig.add_subplot()
 
-        """ for cellular automaton """
+        # Canvas
+        canvas = FigureCanvasTkAgg(fig, master=fr)
+        canvas.get_tk_widget().grid(row=0, column=0)
 
-        # master frame
-        fr_ca = ttk.Frame(frame, style="Custom2.TFrame")
+        # Store phase portrait
+        self.master.axes["phase_portrait"] = phase_portrait
 
-        # make plot space
-        fig_ca = Figure(figsize=(2.2, 2.1), facecolor="lightgray", tight_layout=True)
-        plt.rcParams.update({'font.size':8})
 
-        # make canvas including fig
-        canvas = FigureCanvasTkAgg(fig_ca, master = fr_ca)
-        canvas.get_tk_widget().grid(row=0, column=0, padx=2, pady=2, sticky="nw")
+    def create_internal_phase_of_sw(self, frame):
 
-        ax = fig_ca.add_subplot()
-        ax.set_xlim(0, self.master.params["N"])
-        ax.set_ylim(0, self.master.params["N"])
-        ax.set_xlabel("Y")
-        ax.set_ylabel("X")
+        """
+        Summary:
+            Create graphic space of return map for internal phase of sw
 
-        self.master.axes["ax_ca"] = ax
+        return:
+            self.master.radio_button["which_sw"]
+            self.master.axes["phase of sw"]
 
-        # store frames for later access
-        self.fr_ni = fr_ni
-        self.fr_ca = fr_ca
+        """
+
+        # Label
+        title = ttk.Label(frame, text = "Internal Phase of", style="Custom1.TLabel")
+        title.grid(row=0, column=2, padx=2, pady=2, sticky="ne")
+
+        # StringBar of switch signal
+        radio_button_var_sw = tk.StringVar(value="Sx")
+
+        radio_sx = ttk.Radiobutton(frame, text="Sx", variable=radio_button_var_sw, value="Sx", style="Custom1.TRadiobutton")
+        radio_sx.grid(row=0, column=3, padx=2, pady=2, sticky="ne")
+
+        radio_sy = ttk.Radiobutton(frame, text="Sy", variable=radio_button_var_sw, value="Sy", style="Custom1.TRadiobutton")
+        radio_sy.grid(row=0, column=4, padx=2, pady=2, sticky="nw")
+
+        self.master.radio_buttons["which_sw"] = radio_button_var_sw
+
+        # Frame
+        fr = ttk.Frame(frame, style="Custom2.TFrame")
+        fr.grid(row=1, column=2, columnspan=3, padx=2, pady=2)
+
+        # Graph Space
+        fig = Figure(figsize=(2.2, 2.1), facecolor="lightgray", tight_layout=True)
+
+        # Add plot of phase_portrait
+        return_map = fig.add_subplot()
+
+        # Canvas
+        canvas = FigureCanvasTkAgg(fig, master=fr)
+        canvas.get_tk_widget().grid(row=0, column=0)
+
+        # Store self.axes
+        self.master.axes["phase of switch"] = return_map
+
+
+    def update_graphics(self):
+
+        """
+        Summary:
+            Plot results
+
+        """
+
+        # Time Waveforms
+        TW = GraphicTW(self.master)
+
+        # Plot time waveforms
+        # TW.plot(T, X, Y)
+
+        # Phase Portrait
+        PP = GraphicPP(self.master, self.master.axes["phase_portrait"])
+
+        # Plot time waveforms
+        # PP.plot(X, Y)
+
 
 
     def update_display(self):
@@ -219,19 +244,7 @@ class SysOverview:
         x1_null, x2_null = inst.nullcline_fx_x, inst.nullcline_fx_y
         y1_null, y2_null = inst.nullcline_fy_x, inst.nullcline_fy_y
 
-        # Set equilibrium set
-        self.eset_y = inst.equilibrium_points[:, 1]
-        self.eset_x = inst.equilibrium_points[:, 0]
-
-        """ Analysis results """
-
-        # Analysis nonlinear characteristics
-        self.results = SolN(self.eset_x, self.eset_y, self.master.params)
-
-        # fill in tables
-        self.fill_in_table(self.master.tables["sys overview"])
-
-        """ Phase Plane """
+        """ Graphic Results """
 
         # Display the appropriate frame based on the mode
         if mode in ["fem", "rk4", "ode45"]:
@@ -247,23 +260,8 @@ class SysOverview:
             ax.scatter(x2_null, x1_null, marker=".", s=0.5)
             ax.scatter(y2_null, y1_null, marker=".", s=0.5)
 
-            # set equilibrium
-            for i in range(len(self.eset_x)):
-
-                # sink
-                if self.results.classifications[i] == "sink":
-                    ax.scatter(self.eset_y[i], self.eset_x[i], marker="o", c="red", s= 20)
-
-                # source
-                elif self.results.classifications[i] == "source":
-                    ax.scatter(self.eset_y[i], self.eset_x[i], marker="x", c="blue", s= 20)
-
-                # saddle
-                elif self.results.classifications[i] == "saddle":
-                    ax.scatter(self.eset_y[i], self.eset_x[i], marker="^", c="green", s= 20)
-
-            ax.figure.canvas.draw()
-
+            # plot results
+            # ax.scatter(marker=".", c="red", s= 20)
 
         elif mode in ["SynCA", "ErCA"]:
             self.fr_ca.grid(row=1, column=0, padx=2, pady=2, sticky="nw")
@@ -278,24 +276,12 @@ class SysOverview:
             ax.scatter(x2_null*self.master.params["N"], x1_null*self.master.params["N"], marker=".", s=0.1)
             ax.scatter(y2_null*self.master.params["N"], y1_null*self.master.params["N"], marker=".", s=0.1)
 
-            # set equilibrium
-            for i in range(len(self.eset_x)):
-
-                # sink
-                if self.results.classifications[i] == "sink":
-                    ax.scatter(self.eset_y[i]*self.master.params["s1"], self.eset_x[i]*self.master.params["s2"], marker="o", c="red", s= 20)
-
-                # source
-                elif self.results.classifications[i] == "source":
-                    ax.scatter(self.eset_y[i]*self.master.params["s1"], self.eset_x[i]*self.master.params["s2"], marker="x", c="blue", s= 20)
-
-                # saddle
-                elif self.results.classifications[i] == "saddle":
-                    ax.scatter(self.eset_y[i]*self.master.params["s1"], self.eset_x[i]*self.master.params["s2"], marker="^", c="green", s= 20)
-
-            ax.figure.canvas.draw()
+            # plot results
+            # ax.scatter(marker=".", c="red", s= 20)
 
         else:
             pass
+
+        ax.figure.canvas.draw()
 
 
