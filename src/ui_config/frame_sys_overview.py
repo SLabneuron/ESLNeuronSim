@@ -77,10 +77,10 @@ class SysOverview:
         # set table for output console
         self.output_console(frame)
 
-        """ Event binding """
+        """ Event binding (add) """
 
         # ttk.Combobox
-        self.master.combos["model"].bind("<<ComboboxSelected>>", lambda event: self.update_display())
+        self.master.combos["model"].bind("<<ComboboxSelected>>", lambda event: self.update_display(), add = "+")
         self.master.combos["param set"].bind("<<ComboboxSelected>>", lambda event: self.update_display(), add="+")
 
         # ttk.Entry
@@ -163,8 +163,6 @@ class SysOverview:
         # Label
         title = ttk.Label(frame, text="Phase Plane", style="Custom1.TLabel")
         title.grid(row=0, column=0, padx=2, pady=2, sticky="nw")
-
-        """ for neumerical integration """
 
         # Frame
         fr = ttk.Frame(frame, style="Custom2.TFrame")

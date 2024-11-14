@@ -1,90 +1,38 @@
 # -*- coding: utf-8 -*-
 """
-Created on Sun Jul 23 16:03:28 2023
+Created on: 2023-7-23
+Updated on: 2024-11-12
 
 @author: shirafujilab
 """
 
 import math
 import numpy as np
-from lib.graphic_basic import Graphic
 
 
-class BSwitch:
-    def __init__(self, SYSPARA, init_x, init_y, init_P, init_Q, sTime, eTime, Q1, S):
+class CalCA:
+    def __init__(self, params):
 
-        #state variables
-        self.x_previous = self.x_next = init_x
-        self.y_previous = self.y_next = init_y
-        self.P_previous = self.P_next = init_P
-        self.Q_previous = self.Q_next = init_Q
-        self.phx_previous = self.phx_next = 0
-        self.phy_previous = self.phy_next = 0
+        # get params
+        self.params = params
 
-        #Time evolution
-        self.T = 0
-        self.sT = sTime
-        self.eT = eTime
-        self.h = 0.01
-        
-        #bifurcation paramters
-        self.Q1 = Q1
-        self.S = S
-        
-        #noise
-        #self.sigma1 = 0
-        #self.sigma2 = 0
-        
-        #Paramter Sets
-        #if WEij != 0 WIij=0 reciprocally
-        #pattern 2(a)
-        PARAMETERS_2A = {
-            "tau1":1, 
-            "tau2":1,
-            "b1":0.13*(1+self.Q1), 
-            "b2":0,
-            "WE11":3.9,
-            "WE12":0,
-            "WE21":3.0,
-            "WE22":3.0,
-            "WI11":0,
-            "WI12":0.5*self.Q1,
-            "WI21":0,
-            "WI22":0,
-            }
-        
-        PARAMETERS_2B = {
-            "tau1":1, 
-            "tau2":10,
-            "b1":0.13*(1+self.Q1), 
-            "b2":0,
-            "WE11":3.9,
-            "WE12":0,
-            "WE21":3.0,
-            "WE22":3.0,
-            "WI11":0,
-            "WI12":0.5*self.Q1,
-            "WI21":0,
-            "WI22":0,
-            }
-        
-        for i, key in enumerate(PARAMETERS_2A):
-            globals()[key] = PARAMETERS_2A[key]
-        
-        for i, key in enumerate(SYSPARA):
-            globals()[key] = SYSPARA[key]
-            
-        self.alpha=0.05
-        self.beta=0.05
-        
-        self.t_hist = np.array([])
-        self.x_hist = np.array([])
-        self.y_hist = np.array([])
-        
-        #print(1/Tx, 1/Ty)
-        
-        
-           
+        # state variables
+        self.init_X = np.atleast_1d(params["init_X"])
+        self.init_Y = np.atleast_1d(params["init_Y"])
+        self.init_P = np.atleast_1d(params["init_P"])
+        self.init_Q = np.atleast_1d(params["init_Q"])
+        self.init_phX = np.atleast_1d(params["init_phX"])
+        self.init_phY = np.atleast_1d(params["init_phY"])
+
+
+        # registers
+        self.t_hist = None
+        self.x_hist = None
+        self.y_hist = None
+        self.phx_hist = None
+        self.phy_hist = None
+
+
     def fx(self):
         return (1/tau1)*((b1*self.S+WE11*(self.x_previous/s1)**2+WE12*(self.y_previous/s2)**2)*(1-self.x_previous/s1)\
             -(1+WI11*(self.x_previous/s1)**2+WI12*(self.y_previous/s2)**2)*self.x_previous/s1)        

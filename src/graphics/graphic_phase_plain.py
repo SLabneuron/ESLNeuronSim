@@ -36,6 +36,8 @@ class GraphicPhasePlain:
 
         # For ODE
         if mode in ["fem", "rk4", "ode45"]:
+            
+            print(mode)
 
             """ setting config of plt """
 

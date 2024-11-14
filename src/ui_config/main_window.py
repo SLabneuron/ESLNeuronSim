@@ -25,13 +25,8 @@ from src.ui_config.frame_settings import SimSettings
 from src.ui_config.frame_sys_overview import SysOverview
 from src.ui_config.frame_results import TimeEvol
 
-#from src.ui_config.SLabBCSwitch import BCSwitch as control
-#from src.method.euler.ode_basic import BCSwitch as ode
-#from src.method.eca.eca_basic import BSwitch as eca
-#from src.analyses.analysis_bif import Bif
-#from src.graphics.graphic_basic import Graphic
+from src.method.euler.ode_basic import CalODE
 
-# BCSwitch Controller GUI
 
 class WindowSetup:
 
@@ -47,7 +42,7 @@ class WindowSetup:
         self.axes = {}
         self.tables = {}
 
-        self.init_widgets = {}  # For store init frame widgets
+        self.toggle_widgets = {}  # For store init frame widgets
 
         self.set_widget()
 
@@ -55,14 +50,21 @@ class WindowSetup:
     def set_widget(self):
 
         # set (row, col) = (0:1, 0)
-        SimSettings(self).set_widget()
-        self.parameter_update()
+        self.sim_settings = SimSettings(self)
+
+        ###
+        # Calculate Numerical Integration
+        self.results = CalODE(self.params)
+        self.results.run()
+        ###
 
         # set (row, col) = (0, 1)
-        SysOverview(self).set_widget()
+        self.sys_overview = SysOverview(self)
+        self.sys_overview.set_widget()
 
         # set (row, col) = (1, 1)
-        TimeEvol(self).set_widget()
+        self.time_evol =TimeEvol(self)
+        self.time_evol.set_widget()
 
 
     def parameter_update(self):
@@ -100,11 +102,14 @@ class WindowSetup:
 
         """ Execute Simulation """
 
-        print(self.params)
+        # Calculate Numerical Integration
+        self.results = CalODE(self.params)
+        self.results.run()
 
-        # BCSwitchインスタンスの作成（call for SLabBCSwitch.py）
-        #bcs = control(model, target, graphic, bifp, mp, cap, simp, val_init)
-        #bcs.select()  # 選択した操作の実行
+
+        # Plot: Results time evolution
+        self.time_evol.update_graphics()
+
 
 
 

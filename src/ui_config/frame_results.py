@@ -35,11 +35,9 @@ import numpy as np
 
 
 # import my library
-
-from src.analyses.analysis_null_cline import Nullcline
-
 from src.graphics.graphic_time_waveform import GraphicTimeWaveform as GraphicTW
 from src.graphics.graphic_phase_plain import GraphicPhasePlain as GraphicPP
+from src.graphics.graphic_return_map import GraphicSwitchPhase as GraphicSP
 
 class TimeEvol:
 
@@ -47,7 +45,6 @@ class TimeEvol:
 
         # get parent class
         self.master = master
-
 
 
     def set_widget(self):
@@ -212,76 +209,40 @@ class TimeEvol:
             Plot results
 
         """
+        
+        # axes
+        ax_TW1 = self.master.axes["waveform1"]
+        ax_TW2 = self.master.axes["waveform2"]
+        ax_pp = self.master.axes["phase_portrait"]
+        ax_sp = self.master.axes["phase of switch"]
+
+        # results
+        T = self.master.results.t_hist
+        X = self.master.results.x_hist
+        Y = self.master.results.y_hist
 
         # Time Waveforms
         TW = GraphicTW(self.master)
 
         # Plot time waveforms
-        # TW.plot(T, X, Y)
+        TW.plot(T, X, Y)
 
         # Phase Portrait
-        PP = GraphicPP(self.master, self.master.axes["phase_portrait"])
+        PP = GraphicPP(self.master, ax_pp)
 
-        # Plot time waveforms
-        # PP.plot(X, Y)
+        # Plot phase portrait
+        PP.plot_result(X, Y)
 
+        # Internal Phase of Sw (SP)
+        SP = GraphicSP(self.master)
 
+        # Plot return map
+        # Phase = Phase_X if self.master.radio_button["which_sw"] == "Sx" else Phase_Y
+        # SP.plot(Phase)
 
-    def update_display(self):
-
-        # Get the value from the Combobox widget
-        mode = self.master.combos["model"].get()
-
-        # Remove both frames initially
-        self.fr_ni.grid_forget()
-        self.fr_ca.grid_forget()
-
-        # Calculate nullcline
-        self.master.parameter_update()
-        inst = Nullcline(self.master.params)
-
-        # Set nullcline
-        x1_null, x2_null = inst.nullcline_fx_x, inst.nullcline_fx_y
-        y1_null, y2_null = inst.nullcline_fy_x, inst.nullcline_fy_y
-
-        """ Graphic Results """
-
-        # Display the appropriate frame based on the mode
-        if mode in ["fem", "rk4", "ode45"]:
-            self.fr_ni.grid(row=1, column=0, padx=2, pady=2, sticky="nw")
-
-            # graphics of nullcline
-            ax= self.master.axes["ax_ni"]
-            ax.clear()
-            ax.set_xlim(0, 1)
-            ax.set_ylim(0, 1)
-            ax.set_xlabel("y")
-            ax.set_ylabel("x")
-            ax.scatter(x2_null, x1_null, marker=".", s=0.5)
-            ax.scatter(y2_null, y1_null, marker=".", s=0.5)
-
-            # plot results
-            # ax.scatter(marker=".", c="red", s= 20)
-
-        elif mode in ["SynCA", "ErCA"]:
-            self.fr_ca.grid(row=1, column=0, padx=2, pady=2, sticky="nw")
-
-            # graphics of nullcline
-            ax = self.master.axes["ax_ca"]
-            ax.clear()
-            ax.set_xlim(0, self.master.params["N"])
-            ax.set_ylim(0, self.master.params["N"])
-            ax.set_xlabel("Y")
-            ax.set_ylabel("X")
-            ax.scatter(x2_null*self.master.params["N"], x1_null*self.master.params["N"], marker=".", s=0.1)
-            ax.scatter(y2_null*self.master.params["N"], y1_null*self.master.params["N"], marker=".", s=0.1)
-
-            # plot results
-            # ax.scatter(marker=".", c="red", s= 20)
-
-        else:
-            pass
-
-        ax.figure.canvas.draw()
-
+        # Graphics
+        ax_TW1.figure.canvas.draw()
+        ax_TW2.figure.canvas.draw()
+        ax_pp.figure.canvas.draw()
+        ax_sp.figure.canvas.draw()
 

@@ -13,6 +13,7 @@ Contents:
 
 # import standard library
 
+
 import tkinter as tk
 from tkinter import ttk
 import os
@@ -73,7 +74,8 @@ class ControlPanel:
         # radiobutton style1: "Custom1.TRadiobutton"
         style.configure("Custom1.TRadiobutton",
                         background = "lightgray")
-        
+
+        # matplotlib font size
         plt.rcParams.update({"font.size":8})
 
 

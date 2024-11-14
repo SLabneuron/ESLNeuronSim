@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """
 Created on: 2024-10-22
-Updated on: 2024-10-22
+Updated on: 2024-11-12
 
 @author: shirafujilab
 
@@ -11,60 +11,108 @@ Contents:
 
 # import my library
 import numpy as np
+from numba import njit
 
 
 class CalODE:
 
-    def __init__(self, params, init, bifp=None):
+    def __init__(self, params):
 
         # get params
         self.params = params
 
         # state variables
-        self.x_previous = self.x_next = np.asarray(init["x"])
-        self.y_previous = self.y_next = np.asarray(init["y"])
-
-        if isinstance(bifp, None):
-            self.Q = self.params["Q"]
-            self.S = self.params["S"]
-        else:
-            self.Q = np.asarray(bifp["Q1"])
-            self.S = np.asarray(bifp["S"])
-
-        # time
-        self.T = 0
+        self.init_x = np.atleast_1d(params["init_x"])
+        self.init_y = np.atleast_1d(params["init_y"])
 
         # registers
-        self.t_hist = np.array([])
-        self.x_hist = np.array([])
-        self.y_hist = np.array([])
-
-
-    def fx(self):
-        return self.params["h"]*(1/self.params["tau1"])*((self.params["b1"]*self.params["S"]+self.params["WE11"]*self.x_previous**2+self.params["WE12"]*self.y_previous**2)*(1-self.x_previous)-(1+self.params["WI11"]*self.x_previous**2+self.params["WI12"]*self.y_previous**2)*self.x_previous)
-
-
-    def fy(self):
-        return self.params["h"]*(1/self.params["tau2"])*((self.params["b2"]*self.params["S"]+self.params["WE21"]*self.x_previous**2+self.params["WE22"]*self.y_previous**2)*(1-self.y_previous)-(1+self.params["WI21"]*self.x_previous**2+self.params["WI22"]*self.y_previous**2)*self.y_previous)
+        self.t_hist = None
+        self.x_hist = None
+        self.y_hist = None
 
 
     def run(self):
+        
+        # time
+        sT = self.params["sT"]
+        eT = self.params["eT"]
+        h = self.params["h"]
 
-        while self.T <= self.params["eT"]:
+        # params (fx)
+        tau1 = self.params['tau1']
+        b1 = self.params['b1']
+        S = self.params['S']
+        WE11 = self.params['WE11']
+        WE12 = self.params['WE12']
+        WI11 = self.params['WI11']
+        WI12 = self.params['WI12']
+
+        # params (fy)
+        tau2 = self.params['tau2']
+        b2 = self.params['b2']
+        WE21 = self.params['WE21']
+        WE22 = self.params['WE22']
+        WI21 = self.params['WI21']
+        WI22 = self.params['WI22']
+
+        self.t_hist, self.x_hist, self.y_hist = self.run_simulation(self.init_x, self.init_y,
+                                                                    sT, eT, h,
+                                                                    tau1, b1, S, WE11, WE12, WI11, WI12,
+                                                                    tau2, b2, WE21, WE22, WI21, WI22)
+
+
+    @staticmethod
+    @njit
+    def run_simulation(init_x, init_y,
+                        sT, eT, h,
+                        tau1, b1, S, WE11, WE12, WI11, WI12,
+                        tau2, b2, WE21, WE22, WI21, WI22):
+
+        # Variables
+        x_next = x_previous = init_x
+        y_next = y_previous = init_y
+
+        # Time
+        T = 0
+
+        # Calculate total step for storing
+        total_step = int(eT/h)+1
+        index_start = int(sT/h)
+        store_step = total_step - index_start if total_step > index_start else 0
+
+        # Get size of x, y
+        n = init_x.size if init_x.ndim >0 else 1
+
+        # store return arrays
+        t_hist = np.zeros(store_step)
+        x_hist = np.zeros((store_step, n))
+        y_hist = np.zeros((store_step, n))
+
+        idx = 0
+
+        for i in range(total_step):
+
+            # calculate fx fy
+            fx = (1 / tau1) * ((b1 * S + WE11 * x_previous**2 + WE12 * y_previous**2) * (1 - x_previous) - (1 + WI11 * x_previous**2 + WI12 * y_previous**2) * x_previous)
+            fy = (1 / tau2) * ((b2 * S + WE21 * x_previous**2 + WE22 * y_previous**2) * (1 - y_previous) - (1 + WI21 * x_previous**2 + WI22 * y_previous**2) * y_previous)
 
             # calculate
-            self.x_next = self.x_previous + self.fx()
-            self.y_next = self.y_previous + self.fy()
+            x_next = x_previous + h * fx
+            y_next = y_previous + h * fy
 
             # update variables and time
-            self.x_previous = self.x_next
-            self.y_previous = self.y_next
-            self.T += self.params["h"]
+            x_previous = x_next
+            y_previous = y_next
+            T += h
 
             # store registers
-            if self.T >= self.params["sT"]:
-                self.t_hist = np.append(self.t_hist, self.T)
-                self.x_hist = np.append(self.x_hist, self.x_previous)
-                self.y_hist = np.append(self.y_hist, self.y_previous)
+            if i >= index_start:
 
-        return self.t_hist, self.x_hist, self.y_hist
+                t_hist[idx] = T
+                x_hist[idx, :] = x_previous
+                y_hist[idx, :] = y_previous
+                idx += 1
+
+        return t_hist, x_hist, y_hist
+
+
