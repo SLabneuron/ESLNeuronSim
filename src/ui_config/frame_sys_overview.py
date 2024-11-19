@@ -35,7 +35,6 @@ from src.analyses.analysis_Jacobian import SolveNonlinear as SolN
 from src.graphics.graphic_phase_plain import GraphicPhasePlain as GraphicPP
 
 
-
 class SysOverview:
 
     def __init__(self, master):
@@ -43,9 +42,8 @@ class SysOverview:
         # get parent class
         self.master = master
 
-        # phase portrait
-        self.fr_ni = None
-        self.fr_ca = None
+        # set widget
+        self.set_widget()
 
 
     def set_widget(self):
@@ -76,20 +74,6 @@ class SysOverview:
 
         # set table for output console
         self.output_console(frame)
-
-        """ Event binding (add) """
-
-        # ttk.Combobox
-        self.master.combos["model"].bind("<<ComboboxSelected>>", lambda event: self.update_display(), add = "+")
-        self.master.combos["param set"].bind("<<ComboboxSelected>>", lambda event: self.update_display(), add="+")
-
-        # ttk.Entry
-        self.master.entries["Q"].bind("<Return>", lambda event: self.update_display())
-        self.master.entries["S"].bind("<Return>", lambda event: self.update_display())
-
-        """ Show init results """
-
-        self.update_display()
 
 
     def output_console(self, frame):

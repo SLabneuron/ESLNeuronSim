@@ -15,7 +15,7 @@ Contents:
 
     - Execute
 
-Reutnr:
+Return:
 
     - master.combos["model"]
 

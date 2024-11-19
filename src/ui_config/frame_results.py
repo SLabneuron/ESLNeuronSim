@@ -12,13 +12,22 @@ Contents:
 
     (ODE)
         - time waveforms
-        - phase plain
+        - phase plain (master.axes["phase_portrait"])
 
     (ECA, RCA)
 
         - time waveforms
         - phase plain
         - return map for internal phase of switch signals
+
+Return:
+
+    - master.axes["waveform1"]
+    - master.axes["waveform2"]
+    - master.axes["phase_portrait"]
+    - master.axes["phase of sw"]
+
+    - master.radio_button["which_sw"]
 
 """
 
@@ -46,6 +55,9 @@ class TimeEvol:
         # get parent class
         self.master = master
 
+        # set widget
+        self.set_widget()
+
 
     def set_widget(self):
 
@@ -61,11 +73,7 @@ class TimeEvol:
         frame = ttk.Frame(fr, style="Custom1.TFrame")
         frame.grid(row=1, column=0, padx=2, pady=2, sticky = "nw")
 
-        """ Results Frame """
         self.sets_results_frame(frame)
-
-        # set graph areas
-        self.update_graphics()
 
 
     def sets_results_frame(self, frame):
@@ -209,7 +217,7 @@ class TimeEvol:
             Plot results
 
         """
-        
+
         # axes
         ax_TW1 = self.master.axes["waveform1"]
         ax_TW2 = self.master.axes["waveform2"]
@@ -217,28 +225,29 @@ class TimeEvol:
         ax_sp = self.master.axes["phase of switch"]
 
         # results
-        T = self.master.results.t_hist
-        X = self.master.results.x_hist
-        Y = self.master.results.y_hist
+        if self.master.results != None:
+            T = self.master.results.t_hist
+            X = self.master.results.x_hist
+            Y = self.master.results.y_hist
 
         # Time Waveforms
         TW = GraphicTW(self.master)
 
         # Plot time waveforms
-        TW.plot(T, X, Y)
+        if self.master.results != None: TW.plot(T, X, Y)
 
         # Phase Portrait
         PP = GraphicPP(self.master, ax_pp)
 
         # Plot phase portrait
-        PP.plot_result(X, Y)
+        if self.master.results != None: PP.plot_result(X, Y)
 
         # Internal Phase of Sw (SP)
         SP = GraphicSP(self.master)
 
         # Plot return map
         # Phase = Phase_X if self.master.radio_button["which_sw"] == "Sx" else Phase_Y
-        # SP.plot(Phase)
+        # if self.master.results != None: SP.plot(Phase)
 
         # Graphics
         ax_TW1.figure.canvas.draw()

@@ -177,14 +177,24 @@ class FrParamConfig:
             txt = ttk.Label(fr, text= n[0], style="Custom1.TLabel")
             txt.grid(row=index, column=0, padx=6, pady=2, sticky=tk.W)
 
-            sv = tk.StringVar(value=self.master.params[n[1]])
-            entry = ttk.Entry(fr, width = 6, textvariable=sv)
-            entry.grid(row=index, column=1, padx=4, pady=2)
-
-            self.master.entries[n[1]] = sv
-
             if n[1] in ["Ns", "Ms", "s1_s", "s2_s"]:
+
+                sv = tk.StringVar(value=self.master.params[n[1]])
+                entry = ttk.Entry(fr, width = 6, textvariable=sv)
+                entry.grid(row=index, column=1, padx=4, pady=2)
+
                 sv.trace_add("write", lambda name, idx, op, sv=sv, key=n[1]: self.update_power_label(sv, key))
+
+                self.master.string_var[n[1]]= sv
+
+            else:
+
+                entry = ttk.Entry(fr, width = 6)
+                entry.grid(row=index, column=1, padx=4, pady=2)
+                
+                entry.insert(0, self.master.params[n[1]])
+
+                self.master.entries[n[1]] = entry
 
 
         """ Set widgets: CA parameters columns = [2, 3] """
@@ -197,7 +207,7 @@ class FrParamConfig:
 
             if n[0] in [0, 1, 2, 3]:
 
-                string = "= " + str(2 ** int(self.master.entries[n[1]].get()))
+                string = "= " + str(2 ** int(self.master.string_var[n[1]].get()))
 
                 txt = ttk.Label(fr, text= string, style="Custom1.TLabel")
                 txt.grid(row=n[0], column=2, columnspan=2, padx=4, pady=2, sticky=tk.W)

@@ -1,3 +1,5 @@
 *.csv
 
 csvs
+
+data/results/

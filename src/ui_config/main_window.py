@@ -15,6 +15,7 @@ Contents:
 # import standard libralies
 import tkinter as tk
 from tkinter import ttk
+import datetime
 import csv
 import numpy as np
 import sys
@@ -25,7 +26,10 @@ from src.ui_config.frame_settings import SimSettings
 from src.ui_config.frame_sys_overview import SysOverview
 from src.ui_config.frame_results import TimeEvol
 
+from src.method.method_selects import MethodSelects
 from src.method.euler.ode_basic import CalODE
+
+from src.utils.data_librarian import DataLibrarian
 
 
 class WindowSetup:
@@ -33,16 +37,19 @@ class WindowSetup:
     def __init__(self, root, params):
 
         self.root = root
+
         self.params = params
         self.entries = {}
         self.combos = {}
         self.radio_buttons = {}
-        self.labels = {}
-        self.figs = {}
         self.axes = {}
         self.tables = {}
 
+        self.string_var = {}
         self.toggle_widgets = {}  # For store init frame widgets
+
+        self.results = None
+        self.results_bif = None
 
         self.set_widget()
 
@@ -52,19 +59,50 @@ class WindowSetup:
         # set (row, col) = (0:1, 0)
         self.sim_settings = SimSettings(self)
 
-        ###
-        # Calculate Numerical Integration
-        self.results = CalODE(self.params)
-        self.results.run()
-        ###
-
         # set (row, col) = (0, 1)
         self.sys_overview = SysOverview(self)
-        self.sys_overview.set_widget()
 
         # set (row, col) = (1, 1)
         self.time_evol =TimeEvol(self)
-        self.time_evol.set_widget()
+
+        self.event_bindings()
+
+        # calculate and plot initial conditions
+        #self.time_evol.update_graphics()
+
+
+    def event_bindings(self):
+
+        def update():
+
+            # update parameter
+            self.parameter_update()
+
+            # update graphics
+            self.sys_overview.update_display()
+            self.time_evol.update_graphics()
+
+            # Run simulation
+            MethodSelects(self)
+
+            # Plot: Results time evolution
+            self.time_evol.update_graphics()
+
+
+
+        self.combos["model"].bind("<<ComboboxSelected>>", lambda e: update(), add="+")
+        self.combos["param set"].bind("<<ComboboxSelected>>", lambda e: update(), add="+")
+
+        for key, item in self.entries.items():
+
+            if isinstance(item, ttk.Entry):
+
+                self.entries[key].bind("<Return>", lambda e: update(), add="+")
+
+
+        # Init graphics
+        update()
+
 
 
     def parameter_update(self):
@@ -74,9 +112,15 @@ class WindowSetup:
         # update entries
         for param in self.entries:
 
-            widget = float(self.entries[param].get())
+            widget = self.entries[param]
 
-            self.params[param] = widget
+            self.params[param] = float(widget.get())
+
+        for param in self.string_var:
+
+            widget = self.string_var[param]
+
+            self.params[param]
 
         # update combos
         for param in self.combos:
@@ -99,17 +143,16 @@ class WindowSetup:
 
         # update values
         self.parameter_update()
+        
+        # file directory
+        DataLibrarian(self.params)
 
         """ Execute Simulation """
 
-        # Calculate Numerical Integration
-        self.results = CalODE(self.params)
-        self.results.run()
-
+        # Run simulation
+        MethodSelects(self)
 
         # Plot: Results time evolution
         self.time_evol.update_graphics()
-
-
-
-
+        
+        print("Complete Simulation", datetime.datetime.now())
