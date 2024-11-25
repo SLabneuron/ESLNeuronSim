@@ -45,6 +45,8 @@ Arguments:
 from src.method.euler.ode_basic import CalODE
 from src.method.eca.eca_basic import CalCA
 from src.method.euler.ode_bif import BifODE
+from src.method.eca.eca_bif import BifECA
+
 
 
 
@@ -53,6 +55,8 @@ class MethodSelects:
     def __init__(self, master):
 
         self.master = master
+
+        self.file_name = master.file_name
 
         # get information
         model = master.params["model"]
@@ -70,7 +74,7 @@ class MethodSelects:
             self.master.results = CalODE(self.master.params)
             self.master.results.run()
         elif sim_type == "bifurcation":
-            self.master.results_bif = BifODE(self.master.params)
+            self.master.results_bif = BifODE(self.master.params, self.file_name)
             self.master.results_bif.run()
 
 
@@ -79,3 +83,6 @@ class MethodSelects:
         if sim_type == "time evolution":
             self.master.results = CalCA(self.master.params)
             self.master.results.run()
+        if sim_type == "bifurcation":
+            self.master.results_bif = BifECA(self.master.params, self.file_name)
+            self.master.results_bif.run()

@@ -13,7 +13,6 @@ Contents:
 
 # import standard library
 
-
 import tkinter as tk
 from tkinter import ttk
 import os
@@ -22,7 +21,6 @@ import pandas as pd
 import matplotlib.pyplot as plt
 
 # import my library
-
 
 from src.utils.json_import import json_import
 from src.utils.param_resolver import param_resolver

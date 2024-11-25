@@ -25,7 +25,6 @@ class CalCA:
         self.init_phX = np.atleast_1d(params["init_phX"]).astype(np.float64)
         self.init_phY = np.atleast_1d(params["init_phY"]).astype(np.float64)
 
-
         # registers
         self.t_hist = None
         self.x_hist = None
@@ -121,10 +120,10 @@ class CalCA:
             Fin = (1/tau1)*((b1*S+WE11*(x_previous/s1)**2+WE12*(y_previous/s2)**2)*(1-x_previous/s1)
                                 -(1+WI11*(x_previous/s1)**2+WI12*(y_previous/s2)**2)*x_previous/s1)
 
-            Fin = gamma_X/Fin*(Tc/Tx)
-
             # First: if Fin == 0, result = M-1
             Fin = np.where(Fin == 0, M-1, Fin)
+
+            Fin = gamma_X/Fin*(Tc/Tx)
 
             # Second: if Fin > 0
             positive_condition = np.floor(Fin) >= M - 1
@@ -134,17 +133,19 @@ class CalCA:
             negative_condition = np.ceil(Fin) <= -(M - 1)
             Fin = np.where(negative_condition, -(M - 1), Fin)
 
-            return Fin.astype(np.int32)
+            Fin = np.where(Fin >= 0, np.ceil(Fin), np.floor(Fin))
+
+            return Fin
 
         def dde_Y():
 
             Gin = (1/tau2)*((b2*S+WE21*(x_previous/s1)**2+WE22*(y_previous/s2)**2)*(1-y_previous/s2)
                                 -(1+WI21*(x_previous/s1)**2+WI22*(y_previous/s2)**2)*y_previous/s2)
 
-            Gin = gamma_Y/Gin*(Tc/Ty)
-
             # First: if Gin == 0, result = M-1
             Gin = np.where(Gin == 0, M-1, Gin)
+
+            Gin = gamma_Y/Gin*(Tc/Ty)
 
             # Second: if Gin > 0
             positive_condition = np.floor(Gin) >= M - 1
@@ -153,15 +154,17 @@ class CalCA:
             # Third: if Gin < 0
             negative_condition = np.ceil(Gin) <= -(M - 1)
             Gin = np.where(negative_condition, -(M - 1), Gin)
+            
+            Gin = np.where(Gin >= 0, np.ceil(Gin), np.floor(Gin))
 
-            return Gin.astype(np.int32)
+            return Gin
 
         def time_evolution(T, phx_previous, phy_previous, Cx, Cy):
 
             T = T + Tc
 
             phx_next = phx_previous + Tc/Tx
-            phy_next = phy_previous + Tc/Tx
+            phy_next = phy_previous + Tc/Ty
 
             phx_next = np.where(phx_next >= 1, phx_next - 1, phx_next)
             phy_next = np.where(phy_next >= 1, phy_next - 1, phy_next)
@@ -180,24 +183,30 @@ class CalCA:
             # calculate
             Fx = dde_X()
             Fy = dde_Y()
+            
+            absFx = np.abs(Fx)
+            absFy = np.abs(Fy)
 
             # cal auxiliary variables
             p_next = np.where(Cx==1,
-                              np.where(p_previous < np.abs(Fx), p_previous + 1, 0), p_previous).astype(np.int32)
+                              np.where((p_previous < absFx) & (p_previous < M - 1), p_previous + 1, 0), p_previous).astype(np.int32)
 
             q_next = np.where(Cy==1,
-                              np.where(q_previous < np.abs(Fy), q_previous + 1, 0), q_previous).astype(np.int32)
+                              np.where((q_previous < absFy) & (q_previous < M - 1), q_previous + 1, 0), q_previous).astype(np.int32)
 
-            # cal state variables
-            x_next = np.where((Cx==1) & (p_next >= np.abs(Fx)),
-                                 np.where((Fx>=0) & (x_previous < N-1), x_previous + 1,
-                                 np.where((Fx<0)  & (x_previous > 0),   x_previous - 1, x_previous)),
-                                 x_previous).astype(np.int32)
+            x_next = np.where(Cx==1,
+                                np.where((p_previous >= absFx) | (p_previous >= M -1),
+                                    np.where((Fx >=0) & (x_previous < N-1), x_previous + 1,
+                                        np.where((Fx < 0) & (x_previous > 0), x_previous - 1, x_previous)),
+                                    x_previous),
+                                x_previous).astype(np.int32)
 
-            y_next = np.where((Cy==1) & (q_next >= np.abs(Fy)),
-                                 np.where((Fy>=0) & (y_previous < N-1), y_previous + 1,
-                                 np.where((Fy<0)  & (y_previous > 0),   y_previous - 1, y_previous)),
-                                 y_previous).astype(np.int32)
+            y_next = np.where(Cy==1,
+                                np.where((q_previous >= absFy) | (q_previous >= M -1),
+                                    np.where((Fy >=0) & (y_previous < N-1), y_previous + 1,
+                                        np.where((Fy < 0) & (y_previous > 0), y_previous - 1, y_previous)),
+                                    y_previous),
+                                y_previous).astype(np.int32)
 
             # store registers
             if i >= index_start:
@@ -217,6 +226,7 @@ class CalCA:
             q_previous = q_next
             phx_previous = phx_next
             phy_previous = phy_next
+
 
         return t_hist, x_hist, y_hist, phx_hist, phy_hist
 

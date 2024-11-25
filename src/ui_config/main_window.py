@@ -82,11 +82,8 @@ class WindowSetup:
             self.sys_overview.update_display()
             self.time_evol.update_graphics()
 
-            # Run simulation
-            MethodSelects(self)
-
             # Plot: Results time evolution
-            self.time_evol.update_graphics()
+            self.run_simulation
 
 
 
@@ -144,8 +141,11 @@ class WindowSetup:
         # update values
         self.parameter_update()
         
+        print(self.params)
+        
         # file directory
-        DataLibrarian(self.params)
+        data_lib = DataLibrarian(self.params)
+        self.file_name = data_lib.save_path
 
         """ Execute Simulation """
 
@@ -156,3 +156,5 @@ class WindowSetup:
         self.time_evol.update_graphics()
         
         print("Complete Simulation", datetime.datetime.now())
+        
+        print("\n\n")

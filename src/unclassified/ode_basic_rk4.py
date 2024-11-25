@@ -111,25 +111,25 @@ class BSwitch:
             k2x, k2y = self.k2(k1x, k1y)
             k3x, k3y = self.k3(k2x, k2y)
             k4x, k4y = self.k4(k3x, k3y)
-            
+
             self.x_next = x_temp + self.h/6 * (k1x + 2*k2x + 2*k3x + k4x)
             self.y_next = y_temp + self.h/6 * (k1y + 2*k2y + 2*k3y + k4y)
-            
-            
+
+
             #update
             self.x_previous = self.x_next
             self.y_previous = self.y_next
-            
+
             if self.T >= self.eT*(4/5):
                 self.t_hist = np.append(self.t_hist, self.T)
                 self.x_hist = np.append(self.x_hist, self.x_previous)
                 self.y_hist = np.append(self.y_hist, self.y_previous)
-                
+
         return self.t_hist, self.x_hist, self.y_hist
-            
-            
-    
-    
+
+
+
+
 if __name__ == "__main__":
     #sim
     main = BSwitch(0.3,0.6, 0, 100, 0.5, 0.51)
@@ -137,7 +137,6 @@ if __name__ == "__main__":
     #graphic
     figure = Graphic(t_hist, [0,0.8], x_hist, y_hist)
     figure.graphics()
-    
-        
-        
-        
+
+
+
