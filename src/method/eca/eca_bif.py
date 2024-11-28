@@ -48,8 +48,8 @@ class BifECA:
 
     def make_xx_yy(self):
 
-        self.x = np.arange(0, self.params["N"]-1, 1)
-        self.y = np.arange(0, self.params["N"]-1, 1)
+        self.x = np.arange(0, self.params["N"]-1, 2)
+        self.y = np.arange(0, self.params["N"]-1, 2)
 
         xx, yy = np.meshgrid(self.x, self.y)
 

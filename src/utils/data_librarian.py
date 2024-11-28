@@ -1,143 +1,267 @@
+# -*- coding: utf-8 -*-
+"""
+Created on: 2024-11-25
+Updated on: 2024-11-25
+
+@author: shirafujilab
+
+Construction:
+
+    results
+        |
+        |- set 1, set 2, set 3, set 4
+            |
+            |- fem, rk4, ode45
+                |
+                |
+                |-results
+                        |
+                        |-------- 2-para bif (parameter region), 1-para bif, atraction basin, return map
+            |
+            |
+            |- ErCA, SynCA
+                |
+                |- condition_1, condition_2, ...
+                        |
+                        |--------- 2-para bif (parameter region), 1-para bif, atraction basin, return map
+        |
+        |- data_lib.json
+
+
+"""
+
 import os
 import pandas as pd
+import json
+import datetime
+
 
 class DataLibrarian:
     def __init__(self, params):
-        self.params = params
-        self.cur_dir = self.get_project_root()
-        self.result_dir = os.path.join(self.cur_dir, "data", "results")
 
-        # パラメータセットのディレクトリ
-        set_dir_name = params["param set"]
-        self.set_dir = os.path.join(self.result_dir, set_dir_name)
+        # get parameter
+        self.params = params
+
+        self.set_dir_and_jname()
+        self.set_result_path()
+
+    def set_dir_and_jname(self):
+
+        # get results dir
+        self.get_results_dir()
+
+        # get param set dir (set 1, set 2, set 3, set 4)
+        self.get_param_set_dir()
+
+        # get model dir (ode, ..., ErCA, SynCA)
+        self.get_model_dir()
+
+        # get detailed dir (for each ca parameter and ode pass)
+        self.get_detailed_dir()
+
+        # get simulation dir
+        self.get_sim_type()
+
+    def get_results_dir(self):
+
+        """get project root directory """
+
+        # get root dir
+        cur_dir = os.path.dirname(os.path.abspath(__file__))
+        root_dir = os.path.abspath(os.path.join(cur_dir, "..", ".."))
+
+        # return dir
+        self.result_dir = os.path.join(root_dir, "data", "results")
+        os.makedirs(self.result_dir, exist_ok=True)
+
+    def get_param_set_dir(self):
+
+        """ get param set directory """
+
+        # get select param set
+        param_set = self.params["param set"]
+
+        # return dir
+        self.set_dir = os.path.join(self.result_dir, param_set)
         os.makedirs(self.set_dir, exist_ok=True)
 
-        # モデル名のディレクトリ
-        self.model_name = self.params['model']
-        self.model_dir = os.path.join(self.set_dir, self.model_name)
+        # return name
+        self.set_jname = param_set
+
+    def get_model_dir(self):
+
+        """ get model directory """
+
+        # get select model
+        model = self.params["model"]
+
+        # return dir
+        self.model_dir = os.path.join(self.set_dir, model)
         os.makedirs(self.model_dir, exist_ok=True)
 
-        if self.model_name in ['fem', 'rk4', 'ode45']:
-            self._setup_ode_simulation()
-        elif self.model_name in ['SynCA', 'ErCA']:
-            self._setup_ca_simulation()
+        # return name
+        self.model_jname = model
 
-    def _setup_ode_simulation(self):
-        """ODE 系のシミュレーションディレクトリを作成"""
-        self.simulation_dir = os.path.join(self.model_dir, 'simulation')
-        os.makedirs(self.simulation_dir, exist_ok=True)
+    def get_detailed_dir(self):
 
-        # 結果の保存用ファイルパス
-        base_filename = self.get_filename()
-        self.save_path = self.get_filename_with_suffix(base_filename, self.simulation_dir)
+        """ get detailed dir """
 
-    def _setup_ca_simulation(self):
-        """CA 系の条件ごとのディレクトリを管理"""
-        self.condition_dir = self.get_ca_condition_dir()
-        os.makedirs(self.condition_dir, exist_ok=True)
+        if self.model_jname in ["ErCA", "SynCA"]:
 
-        self.simulation_dir = os.path.join(self.condition_dir, 'simulation')
-        os.makedirs(self.simulation_dir, exist_ok=True)
+            """ check identity """
 
-        # 結果の保存用ファイルパス
-        base_filename = self.get_filename()
-        self.save_path = self.get_filename_with_suffix(base_filename, self.simulation_dir)
+            ca_params_key = ['N', 'M', 's1', 's2', 'gamma_X', 'gamma_Y',
+                             'Tc', 'Tx_rat', 'Tx_sqrt', 'Ty_rat', 'Ty_sqrt']
 
-    def get_project_root(self):
-        """プロジェクトルートディレクトリを取得"""
-        cur_dir = os.path.dirname(os.path.abspath(__file__))
-        return os.path.abspath(os.path.join(cur_dir, "..", ".."))
+            ca_params = {key: self.params[key] for key in ca_params_key}
 
-    def get_ca_condition_dir(self):
-        """
-        CA パラメータごとに一意の 'condition_{i}' ディレクトリを生成
-        """
-        ca_params_keys = ['N', 'M', 's1', 's2', 'gamma_X', 'gamma_Y',
-                          'Tc', 'Tx_rat', 'Tx_sqrt', 'Ty_rat', 'Ty_sqrt']
-        ca_params = {key: self.params.get(key) for key in ca_params_keys}
+            # self.results_dir 内の data_lib.json の中身を確認
+            data_lib_json_path = os.path.join(self.result_dir, 'data_lib.json')
 
-        existing_conditions = [d for d in os.listdir(self.model_dir) if d.startswith('condition_')]
+            if os.path.exists(data_lib_json_path):
+                with open(data_lib_json_path, 'r') as f:
+                    data_lib = json.load(f)
+            else:
+                data_lib = {}
 
-        for cond in existing_conditions:
-            cond_dir = os.path.join(self.model_dir, cond)
-            params_file = os.path.join(cond_dir, 'params.csv')
+            # モデルごとのデータを取得
+            model_data = data_lib.get(self.model_jname, {})
 
-            if os.path.exists(params_file):
-                try:
-                    existing_params = pd.read_csv(params_file, index_col=0, header=None).to_dict()
-                    if self.compare_params(existing_params, ca_params):
-                        print(f"Reusing existing directory: {cond_dir}")
-                        return cond_dir
-                except Exception as e:
-                    print(f"Warning: Failed to read params.csv in {cond_dir}: {e}")
+            # 一致する条件を検索
+            condition_found = False
+            for condition_name, condition_info in model_data.items():
+                if condition_info.get('ca_params') == ca_params:
+                    # 一致する条件が見つかった場合
+                    self.condition_dir = os.path.join(self.model_dir, condition_name)
+                    self.condition_jname = condition_name
+                    condition_found = True
+                    break
 
-        # 新しい条件のディレクトリを作成
-        next_index = len(existing_conditions) + 1
-        condition_name = f'condition_{next_index}'
-        condition_dir = os.path.join(self.model_dir, condition_name)
+            if not condition_found:
+                # 一致する条件が無かった場合、新しいディレクトリを作成
+                existing_conditions = [name for name in model_data.keys() if name.startswith('condition_')]
+                existing_numbers = [int(name.replace('condition_', '')) for name in existing_conditions]
+                next_number = max(existing_numbers) + 1 if existing_numbers else 1
+                condition_i = f'condition_{next_number}'
+                self.condition_dir = os.path.join(self.model_dir, condition_i)
+                os.makedirs(self.condition_dir, exist_ok=True)
+                self.condition_jname = condition_i
 
-        # 必要なディレクトリを作成
-        os.makedirs(condition_dir, exist_ok=True)
+                # data_lib.json を更新
+                if self.model_jname not in data_lib:
+                    data_lib[self.model_jname] = {}
+                data_lib[self.model_jname][condition_i] = {'ca_params': ca_params}
 
-        # パラメータを保存
-        params_file = os.path.join(condition_dir, 'params.csv')
-        try:
-            pd.DataFrame.from_dict(ca_params, orient='index').to_csv(params_file, header=False)
-            print(f"Saved params.csv in {condition_dir}")
-        except Exception as e:
-            print(f"Error saving params.csv in {condition_dir}: {e}")
+                # 更新内容を保存
+                with open(data_lib_json_path, 'w') as f:
+                    json.dump(data_lib, f, indent=4)
 
-        return condition_dir
-
-    def compare_params(self, existing_params, new_params):
-        """既存のパラメータと新しいパラメータを比較"""
-        for key in new_params.keys():
-            if key not in existing_params:
-                return False
-            if str(existing_params[key]) != str(new_params[key]):  # 型を文字列に統一して比較
-                return False
-        return True
-
-    def get_filename(self):
-        """シミュレーションタイプとパラメータに基づいてファイル名を決定"""
-        simulation_type = self.params.get('simulation')
-        set_number = self.params.get('param set', 1)
-        Q = self.params.get('Q', '')
-        S = self.params.get('S', '')
-
-        if simulation_type == 'bif':
-            return f'bif_set{set_number}_Q{Q}.csv'
-        elif simulation_type == 'attraction basin':
-            return f'ab_set{set_number}_Q{Q}_S{S}.csv'
-        elif simulation_type:
-            return f'simulation_{set_number}.csv'
         else:
-            raise ValueError("Unknown simulation type in params.")
+            """ pass operation """
 
-    def get_filename_with_suffix(self, base_filename, directory):
-        """同名ファイルが存在する場合に添え字を付加"""
-        filename = base_filename
-        file_path = os.path.join(directory, filename)
-        suffix = 1
+            # return dir
+            self.condition_dir = os.path.join(self.model_dir, "results")
+            os.makedirs(self.condition_dir, exist_ok=True)
 
-        while os.path.exists(file_path):
-            filename = f"{os.path.splitext(base_filename)[0]}_{suffix}.csv"
-            file_path = os.path.join(directory, filename)
-            suffix += 1
+            # return name
+            self.condition_jname = "results"
 
-        return file_path
+    def get_sim_type(self):
 
-    def save_data(self, data):
-        """データを保存"""
-        try:
-            data.to_csv(self.save_path, index=False)
-            print(f"Data saved to {self.save_path}")
-        except Exception as e:
-            print(f"Error saving data to {self.save_path}: {e}")
+        """ get sim type directory """
 
-        params_file = os.path.join(self.simulation_type_dir, 'params.csv')
-        try:
-            pd.DataFrame.from_dict(self.params, orient='index').to_csv(params_file, header=False)
-            print(f"Params saved to {params_file}")
-        except Exception as e:
-            print(f"Error saving params to {params_file}: {e}")
+        # get sim type
+        simulation = self.params["simulation"]
+
+        # return dir
+        self.sim_dir = os.path.join(self.condition_dir, simulation)
+        os.makedirs(self.sim_dir, exist_ok=True)
+
+        # return name
+        self.sim_jname = simulation
+
+    def set_result_path(self):
+
+        # self.sim_dir のディレクトリに現在の日時を名前とした CSV ファイルを作成
+        now_Q = self.params["Q"]
+        now_S = self.params["S"]
+        now_str = datetime.datetime.now().strftime('%Y%m%d%H%M%S')
+
+        if self.sim_jname == "time evolution":
+            csv_filename = f'{now_str}.csv'
+        elif self.sim_jname == "bifurcation":
+            csv_filename = f'bif_Q_{now_Q}_xaxisS_{now_S}_time_{now_str}.csv'
+        elif self.sim_jname == "parameter region":
+            csv_filename = f'parameter_region_time_{now_str}.csv'
+        elif self.sim_jname == "attraction basin":
+            csv_filename = f'attraction_basin_Q_{now_Q}_S_{now_S}_time_{now_str}.csv'
+        csv_filepath = os.path.join(self.sim_dir, csv_filename)
+
+        # CSV ファイルを作成（ここでは空のファイルを作成）
+        with open(csv_filepath, 'w') as f:
+            pass
+
+        self.result_path = csv_filepath
+
+        # data_lib.json にディレクトリ構造と CSV ファイル名を保存
+        data_lib_json_path = os.path.join(self.result_dir, 'data_lib.json')
+
+        if os.path.exists(data_lib_json_path):
+            with open(data_lib_json_path, 'r') as f:
+                data_lib = json.load(f)
+        else:
+            data_lib = {}
+
+        # ディレクトリ構造を更新
+        set_jname = self.set_jname
+        model_jname = self.model_jname
+        condition_jname = self.condition_jname
+        sim_jname = self.sim_jname
+
+        data_lib.setdefault(set_jname, {}).setdefault(model_jname, {}).setdefault(condition_jname, {}).setdefault(sim_jname, []).append(csv_filename)
+
+        # 更新内容を保存
+        with open(data_lib_json_path, 'w') as f:
+            json.dump(data_lib, f, indent=4)
+
+        # data_lib.csv に操作を記録
+        data_lib_csv_path = os.path.join(self.result_dir, 'data_lib.csv')
+
+        # カラムを定義
+        columns = ['no.', 'filename', 'set', 'model', 'condition_dir', 'N', 'M', 's1', 's2', 'gamma_X', 'gamma_Y',
+                   'Tc', 'Tx_rat', 'Tx_sqrt', 'Ty_rat', 'Ty_sqrt', 'simulation']
+
+        # 既存のデータを読み込み
+        if os.path.exists(data_lib_csv_path):
+            df = pd.read_csv(data_lib_csv_path)
+            no = int(df['no.'].max()) + 1 if not df.empty else 1
+        else:
+            df = pd.DataFrame(columns=columns)
+            no = 1
+
+        # 新しい行を作成
+        row = {
+            'no.': no,
+            'filename': csv_filename,
+            'set': set_jname,
+            'model': model_jname,
+            'condition_dir': condition_jname,
+            'N': '', 'M': '', 's1': '', 's2': '', 'gamma_X': '', 'gamma_Y': '',
+            'Tc': '', 'Tx_rat': '', 'Tx_sqrt': '', 'Ty_rat': '', 'Ty_sqrt': '',
+            'simulation': self.params["simulation"]
+        }
+
+        # ErCA, SynCA の場合はパラメータを埋める
+        if model_jname in ["ErCA", "SynCA"]:
+            ca_params_key = ['N', 'M', 's1', 's2', 'gamma_X', 'gamma_Y',
+                             'Tc', 'Tx_rat', 'Tx_sqrt', 'Ty_rat', 'Ty_sqrt']
+            for key in ca_params_key:
+                row[key] = self.params.get(key, '')
+                
+                
+        # return self.save_path
+        self.save_path = csv_filepath
+
+        # データフレームに行を追加
+        df = pd.concat([df, pd.DataFrame([row])], ignore_index=True)
+        df.to_csv(data_lib_csv_path, index=False)

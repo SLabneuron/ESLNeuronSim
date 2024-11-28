@@ -25,6 +25,7 @@ Return:
 
         time evolution
         bifurcation
+        parameter region
         attraction basin
         Poincare map (return map)
         stability
@@ -88,7 +89,7 @@ class FrControl:
         text1 = ttk.Label(fr, text="Simulation:", style="Custom1.TLabel")
         text1.grid(row=1, column=0, padx=2, pady=2, sticky=tk.W)
 
-        combo1_value = ["time evolution", "bifurcation", "attraction basin", "Poincare Map", "Stability"]
+        combo1_value = ["time evolution", "bifurcation", "parameter region", "attraction basin", "Poincare Map", "Stability"]
         combo1 = ttk.Combobox(fr, values=combo1_value, width=15)
         combo1.grid(row=1, column=1, padx=2, pady=2)
         combo1.set("time evolution")  # Default value
