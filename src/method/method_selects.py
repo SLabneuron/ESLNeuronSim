@@ -38,6 +38,10 @@ Arguments:
             Poincare map (return map)
             stability
 
+Note:
+
+    Before Cal, parameter must be liseted up
+
 """
 
 # import standard library
@@ -45,15 +49,22 @@ import numpy as np
 
 import matplotlib.pyplot as plt
 
+import datetime
 
 # import my library
-from src.method.euler.ode_basic import CalODE
-from src.method.eca.eca_basic import CalCA
+from src.method.euler.ode_basic import calc_time_evolution_ode
+from src.method.eca.eca_basic import CalCA, calc_time_evolution_eca
+
+from src.method.euler.ode_attraction_basin import ABODE
+
 
 from src.method.euler.ode_bif import BifODE
 from src.method.eca.eca_bif import BifECA
 
 from src.method.euler.ode_parameter_rigions import PRODE
+from src.method.eca.eca_parameter_region import PRECANew
+
+from src.graphics.graphic_heatmap import graphic_ab, graphic_pr
 
 
 
@@ -77,34 +88,108 @@ class MethodSelects:
 
     def sim_ode(self, sim_type):
 
+        # Local Analyses
+
         if sim_type == "time evolution":
-            self.master.results = CalODE(self.master.params)
-            self.master.results.run()
-            
+
+            """ assign parameters  """
+
+            # get params
+            params = self.master.params
+
+            # variables
+            init_x, init_y = np.atleast_1d(params["init_x"]), np.atleast_1d(params["init_y"])
+
+            # time
+            sT, eT, h = params["sT"], params["eT"], params["h"]
+
+            # params (fx)
+            tau1, b1, S, WE11, WE12, WI11, WI12 = params['tau1'], params['b1'], params['S'], params['WE11'], params['WE12'], params['WI11'], params['WI12']
+
+            # params (fy)
+            tau2, b2, WE21, WE22, WI21, WI22 = params['tau2'], params['b2'], params['WE21'], params['WE22'], params['WI21'], params['WI22']
+
+            # set calode
+            t_hist, x_hist, y_hist = calc_time_evolution_ode(
+                                                        init_x, init_y,
+                                                        sT, eT, h,
+                                                        tau1, b1, S, WE11, WE12, WI11, WI12,
+                                                        tau2, b2, WE21, WE22, WI21, WI22
+                                                        )
+
+            self.master.results = Results(t_hist, x_hist, y_hist)
+
             # validation
             #self.state_analyzer()
-            
+
+        elif sim_type == "attraction basin":
+            self.master.results_ab = ABODE(self.master.params, self.file_name)
+            self.master.results_ab.run()
+
+        # Global Analyses
+
         elif sim_type == "bifurcation":
             self.master.results_bif = BifODE(self.master.params, self.file_name)
             self.master.results_bif.run()
-        
+
         elif sim_type == "parameter region":
-            self.master.results_ab = PRODE(self.master.params, self.file_name)
-            self.master.results_ab.run()
+            self.master.results_pr = PRODE(self.master.params, self.file_name)
+            self.master.results_pr.run()
 
 
     def sim_ca(self, sim_type):
 
         if sim_type == "time evolution":
-            self.master.results = CalCA(self.master.params)
-            self.master.results.run()
+            
+            """ assign parameters  """
+
+            # get params
+            params = self.master.params
+
+            # variables
+            init_x, init_y = np.atleast_1d(params["init_x"]).astype(np.int32), np.atleast_1d(params["init_y"]).astype(np.int32)
+            init_P, init_Q = np.atleast_1d(params["init_P"]).astype(np.int32), np.atleast_1d(params["init_Q"]).astype(np.int32)
+            init_phX, init_phY = np.atleast_1d(params["init_phX"]).astype(np.float64), np.atleast_1d(params["init_phY"]).astype(np.float64)
+
+            # time
+            sT, eT = params["sT"], params["eT"]
+
+            # params (fx)
+            tau1, b1, S, WE11, WE12, WI11, WI12 = params['tau1'], params['b1'], params['S'], params['WE11'], params['WE12'], params['WI11'], params['WI12']
+
+            # params (fy)
+            tau2, b2, WE21, WE22, WI21, WI22 = params['tau2'], params['b2'], params['WE21'], params['WE22'], params['WI21'], params['WI22']
+
+            # ca params
+            N, M, s1, s2, gamma_X, gamma_Y, Tc, Tx, Ty = params["N"], params["M"], params["s1"], params["s2"], params["gamma_X"], params["gamma_Y"], params["Tc"], params["Tx"], params["Ty"]
+
+            bench_sT = datetime.datetime.now()
+            print("\n start: ", bench_sT)
+
+            #self.master.results = CalCA(self.master.params)
+            #self.master.results.run()
+
+            calc_time_evolution_eca(init_x, init_y, init_P, init_Q, init_phX, init_phY,
+                                    N, M, s1, s2, gamma_X, gamma_Y, Tc, Tx, Ty,
+                                    sT, eT,
+                                    tau1, b1, S, WE11, WE12, WI11, WI12,
+                                    tau2, b2, WE21, WE22, WI21, WI22)
+
+            bench_eT = datetime.datetime.now()
+            print("end: ", bench_eT)
+
+            print("bench mark: ", bench_eT - bench_sT)
 
             # validation
             # self.state_analyzer()
 
-        if sim_type == "bifurcation":
+        elif sim_type == "bifurcation":
             self.master.results_bif = BifECA(self.master.params, self.file_name)
             self.master.results_bif.run()
+
+        elif sim_type == "parameter region":
+            self.master.results_pr = PRECANew(self.master.params, self.file_name)
+            self.master.results_pr.run()
 
 
     def state_analyzer(self):
@@ -224,3 +309,13 @@ class MethodSelects:
         plt.grid(True)
         plt.tight_layout()
         plt.show()
+        
+        
+
+class Results:
+    
+    def __init__(self, t, x, y, phx = None, phy = None):
+        
+        self.t_hist = t
+        self.x_hist = x
+        self.y_hist = y

@@ -24,10 +24,12 @@ import numpy as np
 import pandas as pd
 import os
 
+from numba import njit, prange
+
 import datetime
 
 # import my library
-from src.method.eca.eca_basic import  CalCA
+from src.method.eca.eca_basic import  calc_time_evolution_eca
 
 
 class BifECA:
@@ -35,7 +37,7 @@ class BifECA:
     def __init__(self, params, filename):
 
         # get params
-        self.params = params.copy()
+        self.params = params
 
         self.filename = filename
         print(self.filename)
@@ -43,105 +45,92 @@ class BifECA:
         # Ensure output directory exists
         os.makedirs(os.path.dirname(self.filename), exist_ok=True)
 
-        self.make_xx_yy()
-
-
-    def make_xx_yy(self):
-
-        self.x = np.arange(0, self.params["N"]-1, 2)
-        self.y = np.arange(0, self.params["N"]-1, 2)
-
-        xx, yy = np.meshgrid(self.x, self.y)
-
-        xx = xx.flatten()
-        yy = yy.flatten()
-
-        self.params["init_X"] = xx
-        self.params["init_Y"] = yy
-
-        # Expand other parameters to match the size of xx and yy
-        self.params["init_P"] = np.full_like(xx, self.params["init_P"], dtype=np.int32)
-        self.params["init_Q"] = np.full_like(xx, self.params["init_Q"], dtype=np.int32)
-        self.params["init_phX"] = np.full_like(xx, self.params["init_phX"], dtype=np.float64)
-        self.params["init_phY"] = np.full_like(xx, self.params["init_phY"], dtype=np.float64)
-
-        self.num_initial_conditions = xx.size
-
 
     def run(self):
 
+        """ Condtions """
+
+        # get params
+        params = self.params
+
+        self.x = np.arange(0, self.params["N"]-1, 2).astype(np.int32)
+        self.y = np.arange(0, self.params["N"]-1, 2).astype(np.int32)
+
+        init_x, init_y = np.meshgrid(self.x, self.y)
+
+        init_x = init_x.flatten()
+        init_y = init_y.flatten()
+
+        num_IC = init_x.size
+
+        """ bifurcation """
+
+        # Condtions of S
         bif_S = np.arange(0, 0.81, 0.01)
         num_S = len(bif_S)
-        num_IC = self.num_initial_conditions
 
-        self.S_value = bif_S
-        self.max_values = np.zeros((num_S, num_IC))
-        self.min_values = np.zeros((num_S, num_IC))
+        """ parameters """
 
-        print("start: ", datetime.datetime.now())
+        # Expand other parameters to match the size of xx and yy
+        init_P = np.full_like(init_x, self.params["init_P"], dtype=np.int32)
+        init_Q = np.full_like(init_x, self.params["init_Q"], dtype=np.int32)
+        init_phX = np.full_like(init_x, self.params["init_phX"], dtype=np.float64)
+        init_phY = np.full_like(init_x, self.params["init_phY"], dtype=np.float64)
 
-        for idx, S in enumerate(bif_S):
+        # time
+        sT, eT = params["sT"], params["eT"]
 
-            self.params["S"] = S
+        # params (fx)
+        tau1, b1, WE11, WE12, WI11, WI12 = params['tau1'], params['b1'], params['WE11'], params['WE12'], params['WI11'], params['WI12']
 
-            inst = CalCA(self.params)
-            inst.run()
+        # params (fy)
+        tau2, b2, WE21, WE22, WI21, WI22 = params['tau2'], params['b2'], params['WE21'], params['WE22'], params['WI21'], params['WI22']
 
-            x_hist = inst.x_hist            # shape (num_time_steps, num_IC)
+        # CA params
+        N, M, s1, s2, gamma_X, gamma_Y, Tc, Tx, Ty = params["N"], params["M"], params["s1"], params["s2"], params["gamma_X"], params["gamma_Y"], params["Tc"], params["Tx"], params["Ty"]
 
-            x_max = np.max(x_hist, axis=0)  # shape (num_IC, )
-            x_min = np.min(x_hist, axis=0)
+        # store hist
+        max_values = np.zeros((num_S, num_IC))
+        min_values = np.zeros((num_S, num_IC))
 
-            self.max_values[idx, :] = x_max
-            self.min_values[idx, :] = x_min
+        """ run simulation """
+        bench_sT = datetime.datetime.now()
+        print("\n start: ", bench_sT)
+
+        max_values, min_values = self.calc_bifurcation(init_x, init_y, init_P, init_Q, init_phX, init_phY,
+                        N, M, s1, s2, gamma_X, gamma_Y, Tc, Tx, Ty,
+                        sT, eT,
+                        tau1, b1, bif_S, WE11, WE12, WI11, WI12,
+                        tau2, b2, WE21, WE22, WI21, WI22,
+                        max_values, min_values)
+
+        bench_eT = datetime.datetime.now()
+        print("end: ", bench_eT)
+
+        print("bench mark: ", bench_eT - bench_sT)
 
         """ Store results as a DataFrame """
 
         num_points = len(self.x)
-        total_data_points = num_S * num_points ** 2
 
-        Q_array = np.full(total_data_points, self.params["Q"], dtype=np.int32)
-
-
-        """ Confirm data shape """
         # 各カラムデータの長さを揃える
-        Q_array = np.full(total_data_points, self.params["Q"], dtype=np.int32).flatten()
-        S_array = np.repeat(bif_S, num_points ** 2).flatten()
-        X_array = np.tile(self.params["init_X"], num_S).flatten()
-        Y_array = np.tile(self.params["init_Y"], num_S).flatten()
-        max_val_array = self.max_values.flatten()
-        min_val_array = self.min_values.flatten()
-
-        print("\n--- Debugging Data Consistency ---")
-
-        for col_name, col_data in zip(
-            ["Q", "S", "x", "y", "max_val", "min_val"],
-            [
-                np.full(total_data_points, self.params["Q"], dtype=np.int32),
-                np.repeat(bif_S, num_points ** 2),
-                np.tile(self.params["init_X"], num_S),
-                np.tile(self.params["init_Y"], num_S),
-                self.max_values.flatten(),
-                self.min_values.flatten(),
-            ],
-        ):
-            print(f"{col_name}: Shape={col_data.shape}, Dtype={col_data.dtype}, Sample={col_data[:5]}")
-
-
-
-
+        Q_array = self.params["Q"]
+        S_array = np.repeat(bif_S, num_points ** 2)
+        X_array = np.tile(init_x, num_S)
+        Y_array = np.tile(init_y, num_S)
+        max_val_array = max_values.flatten()
+        min_val_array = min_values.flatten()
 
         df = pd.DataFrame({
-            "Q": Q_array,                           # fixed. 他とおなじshape にして
-            "S": S_array,  # Repeat S for each grid point
+            "Q": Q_array,
+            "S": S_array,               # Repeat S for each grid point
             "x": X_array,
             "y": Y_array,
             "max_val": max_val_array,
             "min_val": min_val_array
         })
 
-
-        # Save to CSV
+        """ Save to CSV """
         try:
             df.to_csv(self.filename, index=False)
             print(f"Results saved to {self.filename}")
@@ -149,4 +138,40 @@ class BifECA:
             print(f"Error saving results to {self.filename}: {e}")
 
 
-        print("end: ", datetime.datetime.now())
+    @staticmethod
+    @njit(parallel=True)
+    def calc_bifurcation(init_x, init_y, init_P, init_Q, init_phX, init_phY,
+                        N, M, s1, s2, gamma_X, gamma_Y, Tc, Tx, Ty,
+                        sT, eT,
+                        tau1, b1, bif_S, WE11, WE12, WI11, WI12,
+                        tau2, b2, WE21, WE22, WI21, WI22,
+                        max_values, min_values):
+
+        for idx in prange(len(bif_S)):
+
+            S = bif_S[idx]
+
+            _, x_hist, _, _, _ = calc_time_evolution_eca(init_x, init_y, init_P, init_Q, init_phX, init_phY,
+                                                         N, M, s1, s2, gamma_X, gamma_Y, Tc, Tx, Ty,
+                                                         sT, eT,
+                                                         tau1, b1, S, WE11, WE12, WI11, WI12,
+                                                         tau2, b2, WE21, WE22, WI21, WI22)
+
+            num_steps, num_vars = x_hist.shape
+
+            x_max = np.full(num_vars, -np.inf)
+            x_min = np.full(num_vars, np.inf)
+
+            # max, min (numba does not support)
+            for j in prange(num_vars):
+                for i in range(num_steps):
+                    val = x_hist[i, j]
+                    if val > x_max[j]:
+                        x_max[j] = val
+                    if val < x_min[j]:
+                        x_min[j] = val
+
+            max_values[idx, :] = x_max
+            min_values[idx, :] = x_min
+
+        return max_values, min_values

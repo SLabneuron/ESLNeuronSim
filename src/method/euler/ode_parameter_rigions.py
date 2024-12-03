@@ -14,10 +14,12 @@ import numpy as np
 import pandas as pd
 import os
 
+from numba import njit, prange
+
 import datetime
 
 # import my library
-from src.method.euler.ode_basic import CalODE
+from src.method.euler.ode_basic import calc_time_evolution_ode
 
 
 class PRODE:
@@ -33,146 +35,250 @@ class PRODE:
         # Ensure output directory exists
         os.makedirs(os.path.dirname(self.filename), exist_ok=True)
 
-        self.make_xx_yy()
-
-    def make_xx_yy(self):
-
-        self.x = np.arange(0, 0.81, 0.02)
-        self.y = np.arange(0, 0.81, 0.02)
-
-        xx, yy = np.meshgrid(self.x, self.y)
-
-        xx = xx.flatten()
-        yy = yy.flatten()
-
-        self.params["init_x"] = xx
-        self.params["init_y"] = yy
-
-        self.num_initial_conditions = xx.size
 
     def run(self):
 
+        """ Conditions """
+
+        params = self.params
+
+        # variables
+        self.x = np.arange(0, 0.81, 0.02)
+        self.y = np.arange(0, 0.81, 0.02)
+
+        init_x, init_y = np.meshgrid(self.x, self.y)
+
+        init_x = init_x.flatten()
+        init_y = init_y.flatten()
+
+        num_IC = init_x.size
+
         # Conditions of S
-        bif_S = np.arange(0, 0.81, 0.05)
+        bif_S = np.arange(0, 0.81, 0.01)
         num_S = len(bif_S)
 
         # Conditions of Q
-        bif_Q = np.arange(0, 0.81, 0.05)
+        bif_Q = np.arange(0, 0.81, 0.01)
         num_Q = len(bif_Q)
 
-        # Number of initial conditions of state vector
-        num_IC = self.num_initial_conditions
+        """ parameters """
 
-        # Initialize lists to store results
-        results_list = []
+        # time
+        sT, eT, h = 1000, 1300, params["h"]
 
-        print("start: ", datetime.datetime.now())
+        # params (fx)
+        tau1, b1, WE11, WE12, WI11, WI12 = params['tau1'], params['b1'], params['WE11'], params['WE12'], params['WI11'], params['WI12']
 
-        for Q_idx, Q in enumerate(bif_Q):
+        # params (fy)
+        tau2, b2, WE21, WE22, WI21, WI22 = params['tau2'], params['b2'], params['WE21'], params['WE22'], params['WI21'], params['WI22']
 
-            self.params["Q"] = Q
+        # parameter set
+        pset = params["param set"]
 
-            # resolve lambda equ
-            self.params["b1"] = eval(self.params["b1_equ"])()
-            self.params["b2"] = eval(self.params["b2_equ"])()
-            self.params["WI12"] = eval(self.params["WI12_equ"])()
+        """ run simulation """
+        bench_sT = datetime.datetime.now()
+        print("\n start: ", bench_sT)
 
-            print("process --->", round(Q_idx/len(bif_Q)*100, 2), "% < ---")
+        Q_list, S_list, x_max_list, x_min_list = self.calc_parameter_region(init_x, init_y,
+                                                                            sT, eT, h,
+                                                                            tau1, b1, WE11, WE12, WI11, WI12,
+                                                                            tau2, b2, WE21, WE22, WI21, WI22,
+                                                                            bif_Q, bif_S, pset)
 
-            for S_idx, S in enumerate(bif_S):
+        bench_eT = datetime.datetime.now()
+        print("end: ", bench_eT)
 
-                self.params["S"] = S
+        print("bench mark: ", bench_eT - bench_sT)
 
-                """ Analysis """
+        """ analysis state in (Q, S) """
 
-                inst = CalODE(self.params)
-                inst.run()
+        result_list = []
+        total_iterations = len(Q_list)
 
-                x_hist = inst.x_hist  # shape (num_time_steps, num_IC)
+        for idx in range(total_iterations):
+            Q = Q_list[idx]
+            S = S_list[idx]
+            x_max = x_max_list[idx]
+            x_min = x_min_list[idx]
 
-                # 各初期条件に対して最大値と最小値を取得
-                x_max = np.max(x_hist, axis=0)  # shape (num_IC,)
-                x_min = np.min(x_hist, axis=0)  # shape (num_IC,)
+            result = self.analyze_results(Q, S, x_max, x_min)
+            result_list.append(result)
 
-                # x_max と x_min を小数点以下3桁に丸める
-                x_max_rounded = np.round(x_max, 3)
-                x_min_rounded = np.round(x_min, 3)
+        """ Store results as a DataFrame """
 
-                x_max_min = np.column_stack((x_max_rounded, x_min_rounded))
+        # make dataframe
+        df = pd.DataFrame(result_list)
 
-                x_max_min_sort = np.unique(x_max_min, axis=0)
-
-                required = 3
-                current = x_max_min_sort.shape[0]
-
-                if current < required:
-                    padding = np.array([[None, None]] * (required - current), dtype=object)
-                    x_max_min_sort = np.vstack((x_max_min_sort, padding))
-                else:
-                    x_max_min_sort = x_max_min_sort[:required]
-
-                # 有効なペアのみを抽出（Noneを除外）
-                valid_pairs = x_max_min_sort[~np.any(x_max_min_sort == None, axis=1)]
-
-                # 平衡点と周期軌道の判定
-                eq_pairs = []
-                po_pairs = []
-
-                for pair in valid_pairs:
-                    if pair[0] - pair[1] < 0.005:
-                        # 平衡点
-                        eq_pairs.append(pair)
-                    else:
-                        # 周期軌道
-                        po_pairs.append(pair)
-
-                # 平衡点の重複チェック（距離 >= 0.005）
-                unique_eq = []
-                for eq in eq_pairs:
-                    if all(np.linalg.norm(eq - existing_eq) >= 0.015 for existing_eq in unique_eq):
-                        unique_eq.append(eq)
-
-                num_eq = len(unique_eq)
-                num_po = len(po_pairs)
-
-                # 状態の分類
-                if num_eq == 1 and num_po == 0:
-                    state = 1  # 平衡点1つだけ
-                elif num_eq == 2 and num_po == 0:
-                    state = 2  # 平衡点2つだけ
-                elif num_eq == 0 and num_po == 1:
-                    state = 3  # 周期軌道1つだけ
-                elif num_eq == 1 and num_po == 1:
-                    state = 4  # 平衡点1つと周期軌道1つ
-                else:
-                    state = 5  # その他
-
-                # 結果をまとめる
-                result = {
-                    "Q": Q,
-                    "S": S,
-                    "max_1": x_max_min_sort[0][0],
-                    "max_2": x_max_min_sort[1][0],
-                    "max_3": x_max_min_sort[2][0],
-                    "min_1": x_max_min_sort[0][1],
-                    "min_2": x_max_min_sort[1][1],
-                    "min_3": x_max_min_sort[2][1],
-                    "state": state
-                }
-                results_list.append(result)
-
-        # データフレームの作成
-        df = pd.DataFrame(results_list)
-
-        # 列の順序を指定
+        # specify column order
         df = df[["Q", "S", "max_1", "max_2", "max_3",
                  "min_1", "min_2", "min_3", "state"]]
 
-        # CSVファイルに保存
+        """ Save to CSV """
+
         try:
             df.to_csv(self.filename, index=False)
             print(f"Results saved to {self.filename}")
         except Exception as e:
             print(f"Error saving results to {self.filename}: {e}")
 
-        print("end: ", datetime.datetime.now())
+
+    @staticmethod
+    @njit(parallel = True)
+    def calc_parameter_region(init_x, init_y,
+                                sT, eT, h,
+                                tau1, b1, WE11, WE12, WI11, WI12,
+                                tau2, b2, WE21, WE22, WI21, WI22,
+                                bif_Q, bif_S, pset
+                                ):
+
+        num_Q = len(bif_Q)
+        num_S = len(bif_S)
+        num_IC = init_x.size
+
+        # total
+        total_iterations = num_Q * num_S
+
+        Q_list = np.empty(total_iterations)
+        S_list = np.empty(total_iterations)
+        x_max_list = [np.empty(num_IC) for _ in range(total_iterations)]
+        x_min_list = [np.empty(num_IC) for _ in range(total_iterations)]
+
+        for idx in prange(total_iterations):
+
+            Q_idx = idx // num_S
+            S_idx = idx % num_S
+
+            Q = bif_Q[Q_idx]
+            S = bif_S[S_idx]
+
+            if pset == "set 1" or pset == "set 2" or pset == "set 3":
+
+                # update relative values
+                b1 = 0.13 * (1 + Q)
+                b2 = 0
+                WI12 = 0.5*Q
+
+            elif pset == "set 4":
+
+                # update relative values
+                b1 = 0.13*(1-Q)
+                b2 = 0.26*Q
+                WI12 = 0
+
+            else:
+
+                # default
+                b1 = 0.13 * (1 + Q)
+                b2 = 0
+                WI12 = 0.5*Q
+
+            # Calculate
+            _, x_hist, _ = calc_time_evolution_ode(init_x, init_y,
+                                                    sT, eT, h,
+                                                    tau1, b1, S, WE11, WE12, WI11, WI12,
+                                                    tau2, b2, WE21, WE22, WI21, WI22)
+
+            """ get maximum and minimum """
+
+            num_steps, num_vars = x_hist.shape
+
+            x_max = np.full(num_vars, -np.inf)
+            x_min = np.full(num_vars, np.inf)
+
+            # max, min (numba does not support)
+            for j in prange(num_vars):
+                for i in range(num_steps):
+                    val = x_hist[i, j]
+                    if val > x_max[j]:
+                        x_max[j] = val
+
+                    if val < x_min[j]:
+                        x_min[j] = val
+
+            Q_list[idx] = Q
+            S_list[idx] = S
+            x_max_list[idx] = x_max
+            x_min_list[idx] = x_min
+
+        return Q_list, S_list, x_max_list, x_min_list
+
+
+
+    def analyze_results(self, Q, S, x_max, x_min):
+
+        # round operation
+        x_max_rounded = np.round(x_max, 3)
+        x_min_rounded = np.round(x_min, 3)
+
+        # [(x_max[0], x_min[0]), (x_max[1], x_min[1]), ...]
+        x_max_min = np.column_stack((x_max_rounded, x_min_rounded))
+
+        # get unique (max, min) combination
+        x_max_min_sort = np.unique(x_max_min, axis=0)
+
+        """ analysis """
+
+        required = 3
+        current = x_max_min_sort.shape[0]
+
+        if current < required:
+            padding = np.array([[None, None]] * (required - current), dtype=object)
+            x_max_min_sort = np.vstack((x_max_min_sort, padding))
+        else:
+            x_max_min_sort = x_max_min_sort[:required]
+
+        # get arrays without (None, None)
+        valid_pairs = x_max_min_sort[~np.any(x_max_min_sort == None, axis=1)]
+
+        # judge equilibrium (eq) or periodic orbit (po)
+        eq_pairs = []
+        po_pairs = []
+
+        for pair in valid_pairs:
+
+            # equilibrium ( < 0.005)
+            if pair[0] - pair[1] < 0.005: eq_pairs.append(pair)
+
+            # periodic orbit
+            else: po_pairs.append(pair)
+
+        # get unique equilibrium (distance >= 0.015)
+        unique_eq = []
+        for eq in eq_pairs:
+            if all(np.linalg.norm(eq - existing_eq) >= 0.015 for existing_eq in unique_eq):
+                unique_eq.append(eq)
+
+        num_eq = len(unique_eq)
+        num_po = len(po_pairs)
+
+        """ classified state """
+
+        # 1. monostable
+        if num_eq == 1 and num_po == 0: state = 1
+
+        # 2. bistable
+        elif num_eq == 2 and num_po == 0: state = 2
+
+        # 3. periodic orbit
+        elif num_eq == 0 and num_po == 1: state = 3
+
+        # 4. coexistence (1 eq and 1 po)
+        elif num_eq == 1 and num_po == 1: state = 4
+
+        # 5. others
+        else: state = 5
+
+        """ Summarized results """
+        result = {
+            "Q": Q,
+            "S": S,
+            "max_1": x_max_min_sort[0][0],
+            "max_2": x_max_min_sort[1][0],
+            "max_3": x_max_min_sort[2][0],
+            "min_1": x_max_min_sort[0][1],
+            "min_2": x_max_min_sort[1][1],
+            "min_3": x_max_min_sort[2][1],
+            "state": state
+        }
+
+        return result

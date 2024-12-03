@@ -27,7 +27,6 @@ from src.ui_config.frame_sys_overview import SysOverview
 from src.ui_config.frame_results import TimeEvol
 
 from src.method.method_selects import MethodSelects
-from src.method.euler.ode_basic import CalODE
 
 from src.utils.data_librarian import DataLibrarian
 
@@ -49,7 +48,9 @@ class WindowSetup:
         self.toggle_widgets = {}  # For store init frame widgets
 
         self.results = None
+        self.results_ab = None
         self.results_bif = None
+        self.results_pr = None
 
         self.set_widget()
 
