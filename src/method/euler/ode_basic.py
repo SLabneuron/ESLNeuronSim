@@ -73,8 +73,8 @@ def calc_time_evolution_ode(init_x, init_y,
                 idx_insert = int(idx/20)
 
                 t_hist[idx_insert] = T
-                x_hist[idx_insert, :] = x_previous
-                y_hist[idx_insert, :] = y_previous
+                x_hist[:, idx_insert] = x_previous
+                y_hist[:, idx_insert] = y_previous
             idx += 1
 
     return t_hist, x_hist, y_hist

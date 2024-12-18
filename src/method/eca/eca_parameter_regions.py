@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 """
+
 Created on: 2024-10-22
 Updated on: 2024-11-12
 
@@ -24,198 +25,10 @@ from numba import njit, prange
 import datetime
 
 # import my library
-from src.method.eca.eca_basic import  CalCA, calc_time_evolution_eca
+from src.method.eca.eca_basic import  calc_time_evolution_eca
 
 
 class PRECA:
-
-    def __init__(self, params, filename):
-
-        # get params
-        self.params = params.copy()
-
-        self.filename = filename
-        print(self.filename)
-
-        # Ensure output directory exists
-        os.makedirs(os.path.dirname(self.filename), exist_ok=True)
-
-        # simulation conditions
-        self.make_xx_yy()
-
-        # time condtions
-        self.params["sT"] = 150
-        self.params["eT"] = 450
-
-
-    def make_xx_yy(self):
-
-        self.x = np.arange(0, self.params["N"]-1, 2)
-        self.y = np.arange(0, self.params["N"]-1, 2)
-
-        xx, yy = np.meshgrid(self.x, self.y)
-
-        xx = xx.flatten()
-        yy = yy.flatten()
-
-        self.params["init_X"] = xx
-        self.params["init_Y"] = yy
-
-        # Expand other parameters to match the size of xx and yy
-        self.params["init_P"] = np.full_like(xx, self.params["init_P"], dtype=np.int32)
-        self.params["init_Q"] = np.full_like(xx, self.params["init_Q"], dtype=np.int32)
-        self.params["init_phX"] = np.full_like(xx, self.params["init_phX"], dtype=np.float64)
-        self.params["init_phY"] = np.full_like(xx, self.params["init_phY"], dtype=np.float64)
-
-        self.num_initial_conditions = xx.size
-
-
-    def run(self):
-
-        # Condition of S
-        bif_S = np.arange(0, 0.81, 0.01)
-        num_S = len(bif_S)
-
-        # Condition of Q
-        bif_Q = np.arange(0, 0.81, 0.01)
-        num_Q = len(bif_Q)
-
-        # Number of initial conditions of state vector
-        num_IC = self.num_initial_conditions
-
-        # Initialize lists to store results
-        results_list = []
-
-        print("start: ", datetime.datetime.now())
-
-        for Q_idx, Q in enumerate(bif_S):
-
-            self.params["Q"] = Q
-
-            # resolve lambda equ
-            self.params["b1"] = eval(self.params["b1_equ"])()
-            self.params["b2"] = eval(self.params["b2_equ"])()
-            self.params["WI12"] = eval(self.params["WI12_equ"])()
-
-            print("process --->", round(Q_idx/len(bif_Q)*100, 2), "% < ---")
-
-            for S_idx, S in enumerate(bif_S):
-
-                self.params["S"] = S
-
-                # Calculate
-                inst = CalCA(self.params)
-                inst.run()
-
-                """ pre-procedure """
-
-                # copy simulation results in all conditions
-                x_hist = inst.x_hist            # shape (num_time_steps, num_IC)
-
-                # get max and min value in all conditions
-                x_max = np.max(x_hist, axis=0)  # shape (num_IC, )
-                x_min = np.min(x_hist, axis=0)
-
-                # round operation
-                x_max_rounded = np.round(x_max, 3)
-                x_min_rounded = np.round(x_min, 3)
-
-                # [(x_max[0], x_min[0]), (x_max[1], x_min[1]), ...]
-                x_max_min = np.column_stack((x_max_rounded, x_min_rounded))
-
-                # get unique (max, min) combination
-                x_max_min_sort = np.unique(x_max_min, axis=0)
-
-                """ analysis """
-
-                required = 3
-                current = x_max_min_sort.shape[0]
-
-                if current < required:
-                    padding = np.array([[None, None]] * (required - current), dtype=object)
-                    x_max_min_sort = np.vstack((x_max_min_sort, padding))
-                else:
-                    x_max_min_sort = x_max_min_sort[:required]
-
-                # get arrays without (None, None)
-                valid_pairs = x_max_min_sort[~np.any(x_max_min_sort == None, axis=1)]
-
-                # judge equilibrium (eq) or periodic orbit (po)
-                eq_pairs = []
-                po_pairs = []
-
-                for pair in valid_pairs:
-
-                    # equilibirum ( <= 3)
-                    if pair[0] - pair[1] <= 3: eq_pairs.append(pair)
-
-                    # periodic orbit
-                    else: po_pairs.append(pair)
-
-                # get unique equilibrium (distance >= 3)
-                unique_eq = []
-
-                for eq in eq_pairs:
-                    if all(np.linalg.norm(eq - existing_eq) >= 3 for existing_eq in unique_eq):
-                        unique_eq.append(eq)
-
-                # count up eq and po
-                num_eq = len(unique_eq)
-                num_po = len(po_pairs)
-
-                """ classified state """
-
-                # 1. monostable
-                if num_eq == 1 and num_po == 0: state = 1
-
-                # 2. bistable
-                elif num_eq == 2 and num_po == 0: state = 2
-
-                # 3. periodic orbit
-                elif num_eq == 0 and num_po == 1: state = 3
-
-                # 4. coexistence (1 eq and 1 po)
-                elif num_eq == 1 and num_po == 1: state = 4
-
-                # 5. others
-                else: state = 5
-
-                """ Summarized results """
-                result = {
-                    "Q": Q,
-                    "S": S,
-                    "max_1": x_max_min_sort[0][0],
-                    "max_2": x_max_min_sort[1][0],
-                    "max_3": x_max_min_sort[2][0],
-                    "min_1": x_max_min_sort[0][1],
-                    "min_2": x_max_min_sort[1][1],
-                    "min_3": x_max_min_sort[2][1],
-                    "state": state
-                }
-                results_list.append(result)
-
-
-        # make dataframe
-        df = pd.DataFrame(results_list)
-
-        # specify column order
-        df = df[["Q", "S", "max_1", "max_2", "max_3",
-                 "min_1", "min_2", "min_3", "state"]]
-
-
-        # Save to CSV
-        try:
-            df.to_csv(self.filename, index=False)
-            print(f"Results saved to {self.filename}")
-        except Exception as e:
-            print(f"Error saving results to {self.filename}: {e}")
-
-
-        print("end: ", datetime.datetime.now())
-
-
-
-class PRECANew:
 
     def __init__(self, params, filename):
 
@@ -387,11 +200,11 @@ class PRECANew:
                 WI12 = 0.5*Q
 
             # Calculate
-            _, x_hist, _, _, _ = calc_time_evolution_eca(init_x, init_y, init_P, init_Q, init_phX, init_phY,
-                                                         N, M, s1, s2, gamma_X, gamma_Y, Tc, Tx, Ty,
-                                                         sT, eT,
-                                                         tau1, b1, S, WE11, WE12, WI11, WI12,
-                                                         tau2, b2, WE21, WE22, WI21, WI22)
+            _, x_hist, _ = calc_time_evolution_eca(init_x, init_y, init_P, init_Q, init_phX, init_phY,
+                                                   N, M, s1, s2, gamma_X, gamma_Y, Tc, Tx, Ty,
+                                                   sT, eT,
+                                                   tau1, b1, S, WE11, WE12, WI11, WI12,
+                                                   tau2, b2, WE21, WE22, WI21, WI22)
 
             """ get maximum and minimum """
 

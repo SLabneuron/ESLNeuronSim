@@ -53,16 +53,16 @@ import datetime
 
 # import my library
 from src.method.euler.ode_basic import calc_time_evolution_ode
-from src.method.eca.eca_basic import CalCA, calc_time_evolution_eca
+from src.method.eca.eca_basic import calc_time_evolution_eca
 
 from src.method.euler.ode_attraction_basin import ABODE
-
+from src.method.eca.eca_attraction_basin import ABECA
 
 from src.method.euler.ode_bif import BifODE
 from src.method.eca.eca_bif import BifECA
 
 from src.method.euler.ode_parameter_rigions import PRODE
-from src.method.eca.eca_parameter_region import PRECANew
+from src.method.eca.eca_parameter_regions import PRECA
 
 from src.graphics.graphic_heatmap import graphic_ab, graphic_pr
 
@@ -123,7 +123,7 @@ class MethodSelects:
             #self.state_analyzer()
 
         elif sim_type == "attraction basin":
-            self.master.results_ab = ABODE(self.master.params, self.file_name)
+            self.master.results_ab = ABODE(self.master, self.file_name)
             self.master.results_ab.run()
 
         # Global Analyses
@@ -139,8 +139,10 @@ class MethodSelects:
 
     def sim_ca(self, sim_type):
 
+        # Local Analyses
+
         if sim_type == "time evolution":
-            
+
             """ assign parameters  """
 
             # get params
@@ -166,29 +168,34 @@ class MethodSelects:
             bench_sT = datetime.datetime.now()
             print("\n start: ", bench_sT)
 
-            #self.master.results = CalCA(self.master.params)
-            #self.master.results.run()
-
-            calc_time_evolution_eca(init_x, init_y, init_P, init_Q, init_phX, init_phY,
-                                    N, M, s1, s2, gamma_X, gamma_Y, Tc, Tx, Ty,
-                                    sT, eT,
-                                    tau1, b1, S, WE11, WE12, WI11, WI12,
-                                    tau2, b2, WE21, WE22, WI21, WI22)
+            t_hist, x_hist, y_hist = calc_time_evolution_eca(init_x, init_y, init_P, init_Q, init_phX, init_phY,
+                                                             N, M, s1, s2, gamma_X, gamma_Y, Tc, Tx, Ty,
+                                                             sT, eT,
+                                                             tau1, b1, S, WE11, WE12, WI11, WI12,
+                                                             tau2, b2, WE21, WE22, WI21, WI22)
 
             bench_eT = datetime.datetime.now()
             print("end: ", bench_eT)
 
             print("bench mark: ", bench_eT - bench_sT)
 
+            self.master.results = Results(t_hist, x_hist, y_hist)
+
             # validation
             # self.state_analyzer()
+
+        elif sim_type == "attraction basin":
+            self.master.results_ab = ABECA(self.master, self.file_name)
+            self.master.results_ab.run()
+
+        # Global Analyses
 
         elif sim_type == "bifurcation":
             self.master.results_bif = BifECA(self.master.params, self.file_name)
             self.master.results_bif.run()
 
         elif sim_type == "parameter region":
-            self.master.results_pr = PRECANew(self.master.params, self.file_name)
+            self.master.results_pr = PRECA(self.master.params, self.file_name)
             self.master.results_pr.run()
 
 
@@ -309,13 +316,13 @@ class MethodSelects:
         plt.grid(True)
         plt.tight_layout()
         plt.show()
-        
-        
+
+
 
 class Results:
-    
+
     def __init__(self, t, x, y, phx = None, phy = None):
-        
+
         self.t_hist = t
         self.x_hist = x
         self.y_hist = y

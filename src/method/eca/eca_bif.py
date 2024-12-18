@@ -53,6 +53,7 @@ class BifECA:
         # get params
         params = self.params
 
+        # variables
         self.x = np.arange(0, self.params["N"]-1, 2).astype(np.int32)
         self.y = np.arange(0, self.params["N"]-1, 2).astype(np.int32)
 
@@ -151,7 +152,7 @@ class BifECA:
 
             S = bif_S[idx]
 
-            _, x_hist, _, _, _ = calc_time_evolution_eca(init_x, init_y, init_P, init_Q, init_phX, init_phY,
+            _, x_hist, _ = calc_time_evolution_eca(init_x, init_y, init_P, init_Q, init_phX, init_phY,
                                                          N, M, s1, s2, gamma_X, gamma_Y, Tc, Tx, Ty,
                                                          sT, eT,
                                                          tau1, b1, S, WE11, WE12, WI11, WI12,

@@ -142,7 +142,7 @@ class WindowSetup:
         # update values
         self.parameter_update()
         
-        print(self.params)
+        #print(self.params)
         
         # file directory
         data_lib = DataLibrarian(self.params)

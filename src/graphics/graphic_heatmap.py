@@ -207,7 +207,7 @@ if __name__ == "__main__":
 
     #filepath = r"c:\Storage\02_paper\03_2023_ELEX\04_Python\data\results\set 1\fem\results\parameter region\parameter_region_time_20241128105925.csv"
 
-    filepath = r"c:\Storage\02_paper\03_2023_ELEX\04_Python\data\results\set 1\ErCA\condition_8\parameter region\parameter_region_time_20241203010117.csv"
-    #graphic_ab(filepath)
+    filepath = r"c:\Storage\02_paper\03_2023_ELEX\04_Python\data\results\set 1\fem\results\attraction basin\attraction_basin_Q_0.52_S_0.543_time_20241203142711.csv"
+    graphic_ab(filepath)
 
-    graphic_pr(filepath)
+    #graphic_pr(filepath)
