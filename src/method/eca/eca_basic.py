@@ -42,8 +42,8 @@ def calc_time_evolution_eca(init_X, init_Y, init_P, init_Q, init_phX, init_phY,
 
     # store return arrays
     t_hist = np.zeros(store_step)
-    x_hist = np.zeros((store_step, n))
-    y_hist = np.zeros((store_step, n))
+    x_hist = np.zeros((n, store_step))
+    y_hist = np.zeros((n, store_step))
 
     idx = 0
 
@@ -158,8 +158,8 @@ def calc_time_evolution_eca(init_X, init_Y, init_P, init_Q, init_phX, init_phY,
                 t_hist[idx_insert] = T
 
                 # x_hist, y_hist shape: (time, state variables)
-                x_hist[idx_insert,:] = x_previous
-                y_hist[idx_insert,:] = y_previous
+                x_hist[:, idx_insert] = x_previous
+                y_hist[:, idx_insert] = y_previous
 
             idx += 1
 

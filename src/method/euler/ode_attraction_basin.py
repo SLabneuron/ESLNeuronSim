@@ -23,7 +23,7 @@ from src.analyses.analysis_null_cline import Nullcline
 
 from src.method.euler.ode_basic import  calc_time_evolution_ode
 
-from src.graphics.graphic_analysis_phase_plane import PhasePlanePlotter
+from src.graphics.graphic_attraction_basin import PhasePlanePlotter
 
 
 class ABODE:
@@ -55,10 +55,10 @@ class ABODE:
 
         init_xx, init_yy = np.meshgrid(self.x, self.y)
 
-        init_x = init_xx.flatten()
-        init_y = init_yy.flatten()
+        self.x = init_xx.flatten()
+        self.y = init_yy.flatten()
 
-        num_IC = init_x.size        # initial condtions
+        num_init_conds = self.x.size        # initial condtions
 
         """ parameters """
 
@@ -75,7 +75,7 @@ class ABODE:
         bench_sT = datetime.datetime.now()
         print("\n start: ", bench_sT)
 
-        self.x_hist, self.y_hist = self.calc_attraction_basin(init_x, init_y,
+        x_max, x_min, y_max, y_min = self.calc_attraction_basin(self.x, self.y,
                                                             sT, eT, h,
                                                             tau1, b1, S, WE11, WE12, WI11, WI12,
                                                             tau2, b2, WE21, WE22, WI21, WI22)
@@ -87,7 +87,7 @@ class ABODE:
 
         """ analysis heatmap"""
 
-        result_list = self.analysis_phase_plain(num_IC, self.x_hist, self.y_hist)
+        result_list = self.analysis_phase_plain(num_init_conds, x_max, x_min, y_max, y_min)
 
         """ analysis nullcline for graphics """
 
@@ -98,8 +98,8 @@ class ABODE:
 
         # make df
         df = pd.DataFrame({
-            "init_x": init_x,
-            "init_y": init_y,
+            "init_x": self.x,
+            "init_y": self.y,
             "state": result_list
         })
 
@@ -132,20 +132,19 @@ class ABODE:
                                                 tau1, b1, S, WE11, WE12, WI11, WI12,
                                                 tau2, b2, WE21, WE22, WI21, WI22)
 
-        return x_hist, y_hist
-
-
-    def analysis_phase_plain(self, num_IC, x_hist, y_hist):
-
-        """ pre processing """
-
-        # get x_max, x_min, y_max, y_min
-        x_max, x_min = np.max(x_hist, axis=0), np.min(x_hist, axis=0)
-        y_max, y_min = np.max(y_hist, axis=0), np.min(y_hist, axis=0)
+        # calculate max and min
+        x_max, x_min = np.max(x_hist, axis=1), np.min(x_hist, axis=1)
+        y_max, y_min = np.max(y_hist, axis=1), np.min(y_hist, axis=1)
 
         # round operation
         x_max, x_min = np.round(x_max, 3), np.round(x_min, 3)
         y_max, y_min = np.round(y_max, 3), np.round(y_min, 3)
+
+        return x_max, x_min, y_max, y_min
+
+
+    def analysis_phase_plain(self, num_init_conds, x_max, x_min, y_max, y_min):
+
 
         # get center point of x, y assuming equilibrium
         x_cen, y_cen = (x_max + x_min)/2, (y_max + y_min)/2
@@ -153,8 +152,7 @@ class ABODE:
         # get (x, y) including po (periodic orbit)
         xy = np.column_stack((x_cen, y_cen))
 
-        """ start classified """
-
+        # prepare array for classifying
         equ_1_idx = np.array([])
         equ_2_idx = np.array([])
         po_idx = np.array([])
@@ -164,7 +162,7 @@ class ABODE:
         po_idx = np.where(condition_po)[0]
 
         # If thee condition converging to a  periodic orbit is the same size as the total conditions
-        if len(po_idx) == num_IC:
+        if len(po_idx) == num_init_conds:
             eq_idx = np.array([])
         else:
 
@@ -186,7 +184,7 @@ class ABODE:
         self.equ_2_idx = None
         self.po_idx = None
 
-        for idx in range(num_IC):
+        for idx in range(num_init_conds):
 
             # 1. converging to equ_1
             if idx in equ_1_idx:
@@ -233,15 +231,43 @@ class ABODE:
 
         # only an equilibrium
         if (self.equ_1_idx != None) and (self.equ_2_idx == None):
-            inst.add_result(self.x_hist.T[self.equ_1_idx], self.y_hist.T[self.equ_1_idx], c="red", l="equ")
+
+            _, x_hist, y_hist = calc_time_evolution_ode(np.array([self.x[self.equ_1_idx]]), np.array([self.y[self.equ_1_idx]]),
+                                                        self.params["sT"], self.params["eT"], self.params["h"],
+                                                        self.params["tau1"], self.params["b1"], self.params["S"], self.params["WE11"], self.params["WE12"], self.params["WI11"], self.params["WI12"],
+                                                        self.params["tau2"], self.params["b2"], self.params["WE21"], self.params["WE22"], self.params["WI21"], self.params["WI22"]
+                                                        )
+
+            inst.add_result(x_hist, y_hist, c="red", l="equ")
 
         # two equilibria
         elif (self.equ_1_idx != None) and (self.equ_2_idx != None):
-            inst.add_result(self.x_hist.T[self.equ_1_idx], self.y_hist.T[self.equ_1_idx], c="red", l="equ 1")
-            inst.add_result(self.x_hist.T[self.equ_2_idx], self.y_hist.T[self.equ_2_idx], c="blue", l="equ 2")
+
+            _, x_hist, y_hist = calc_time_evolution_ode(np.array([self.x[self.equ_1_idx]]), np.array([self.y[self.equ_1_idx]]),
+                                                        self.params["sT"], self.params["eT"], self.params["h"],
+                                                        self.params["tau1"], self.params["b1"], self.params["S"], self.params["WE11"], self.params["WE12"], self.params["WI11"], self.params["WI12"],
+                                                        self.params["tau2"], self.params["b2"], self.params["WE21"], self.params["WE22"], self.params["WI21"], self.params["WI22"]
+                                                        )
+
+            inst.add_result(x_hist, y_hist, c="red", l="equ 1")
+
+            _, x_hist, y_hist = calc_time_evolution_ode(np.array([self.x[self.equ_2_idx]]), np.array([self.y[self.equ_2_idx]]),
+                                                        self.params["sT"], self.params["eT"], self.params["h"],
+                                                        self.params["tau1"], self.params["b1"], self.params["S"], self.params["WE11"], self.params["WE12"], self.params["WI11"], self.params["WI12"],
+                                                        self.params["tau2"], self.params["b2"], self.params["WE21"], self.params["WE22"], self.params["WI21"], self.params["WI22"]
+                                                        )
+
+            inst.add_result(x_hist, y_hist, c="blue", l="equ 2")
 
         # po
         if self.po_idx != None:
-            inst.add_result(self.x_hist.T[self.po_idx], self.y_hist.T[self.po_idx], c="gray", l="periodic orbit")
+            
+            _, x_hist, y_hist = calc_time_evolution_ode(np.array([self.x[self.po_idx]]), np.array([self.y[self.po_idx]]),
+                                                        self.params["sT"], self.params["eT"], self.params["h"],
+                                                        self.params["tau1"], self.params["b1"], self.params["S"], self.params["WE11"], self.params["WE12"], self.params["WI11"], self.params["WI12"],
+                                                        self.params["tau2"], self.params["b2"], self.params["WE21"], self.params["WE22"], self.params["WI21"], self.params["WI22"]
+                                                        )
+            
+            inst.add_result(x_hist, y_hist, c="gray", l="periodic orbit")
 
         inst.show()

@@ -45,8 +45,8 @@ def calc_time_evolution_ode(init_x, init_y,
 
     # store return arrays
     t_hist = np.zeros(store_step, dtype=np.float32)
-    x_hist = np.zeros((store_step, n), dtype=np.float32)
-    y_hist = np.zeros((store_step, n), dtype=np.float32)
+    x_hist = np.zeros((n, store_step), dtype=np.float32)
+    y_hist = np.zeros((n, store_step), dtype=np.float32)
 
     idx = 0
 

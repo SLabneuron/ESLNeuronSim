@@ -158,19 +158,19 @@ class BifECA:
                                                          tau1, b1, S, WE11, WE12, WI11, WI12,
                                                          tau2, b2, WE21, WE22, WI21, WI22)
 
-            num_steps, num_vars = x_hist.shape
+            num_vars, num_steps = x_hist.shape
 
             x_max = np.full(num_vars, -np.inf)
             x_min = np.full(num_vars, np.inf)
 
             # max, min (numba does not support)
-            for j in prange(num_vars):
-                for i in range(num_steps):
+            for i in range(num_vars):
+                for j in range(num_steps):
                     val = x_hist[i, j]
-                    if val > x_max[j]:
-                        x_max[j] = val
-                    if val < x_min[j]:
-                        x_min[j] = val
+                    if val > x_max[i]:
+                        x_max[i] = val
+                    if val < x_min[i]:
+                        x_min[i] = val
 
             max_values[idx, :] = x_max
             min_values[idx, :] = x_min

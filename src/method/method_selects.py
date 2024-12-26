@@ -64,8 +64,6 @@ from src.method.eca.eca_bif import BifECA
 from src.method.euler.ode_parameter_rigions import PRODE
 from src.method.eca.eca_parameter_regions import PRECA
 
-from src.graphics.graphic_heatmap import graphic_ab, graphic_pr
-
 
 
 class MethodSelects:
@@ -149,7 +147,7 @@ class MethodSelects:
             params = self.master.params
 
             # variables
-            init_x, init_y = np.atleast_1d(params["init_x"]).astype(np.int32), np.atleast_1d(params["init_y"]).astype(np.int32)
+            init_x, init_y = np.atleast_1d(params["init_X"]).astype(np.int32), np.atleast_1d(params["init_Y"]).astype(np.int32)
             init_P, init_Q = np.atleast_1d(params["init_P"]).astype(np.int32), np.atleast_1d(params["init_Q"]).astype(np.int32)
             init_phX, init_phY = np.atleast_1d(params["init_phX"]).astype(np.float64), np.atleast_1d(params["init_phY"]).astype(np.float64)
 

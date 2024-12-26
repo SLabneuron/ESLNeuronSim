@@ -16,7 +16,9 @@ Contents: graphic following contents
 
 
 import numpy as np
+import pandas as pd
 import matplotlib.pyplot as plt
+import re
 
 class PhasePlanePlotter:
     def __init__(self, init_x, init_y, state_data):
@@ -66,5 +68,46 @@ class PhasePlanePlotter:
         self.ax.set_ylabel('init_x (y-axis)')
         self.ax.set_title(title)
         self.ax.grid()
-        self.ax.legend()
-        plt.show()
+        #self.ax.legend()
+        plt.show(block=True)
+
+
+
+
+
+if __name__ == "__main__":
+
+    # filepath
+    filename = r"C:\Storage\02_paper\03_2025_TEEE\04_Python\data\results\set 1\ErCA\condition_1\attraction basin\attraction_basin_Q_0.4_S_0.52_time_20241222225819.csv"
+
+    match = re.search(r"set \d+\\([^\\]+)\\", filename)
+
+    if match:
+        model = match.group(1)
+
+
+    if model == "ode":
+
+        df = pd.read_csv(filename)
+
+        x = np.arange(0, 1.01, 0.01)
+        y = np.arange(0, 1.01, 0.01)
+
+    elif model == "ErCA":
+
+        df = pd.read_csv(filename)
+
+        x = np.arange(0, 64, 1)
+        y = np.arange(0, 64, 1)
+
+
+    xx, yy = np.meshgrid(x, y)
+    states = np.array(df["state"].tolist())
+
+    states = states.reshape(xx.shape)
+
+    #print(xx, yy, states.shape)
+
+    inst = PhasePlanePlotter(xx, yy, states)
+
+    inst.show()

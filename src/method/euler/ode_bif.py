@@ -52,7 +52,7 @@ class BifODE:
         init_x = init_x.flatten()
         init_y = init_y.flatten()
 
-        num_IC = init_x.size
+        num_init_conds = init_x.size
 
         # bifurcation parameter
 
@@ -71,8 +71,8 @@ class BifODE:
         tau2, b2, WE21, WE22, WI21, WI22 = params['tau2'], params['b2'], params['WE21'], params['WE22'], params['WI21'], params['WI22']
 
         # store hist
-        max_values = np.zeros((num_S, num_IC))
-        min_values = np.zeros((num_S, num_IC))
+        max_values = np.zeros((num_S, num_init_conds))
+        min_values = np.zeros((num_S, num_init_conds))
 
         """ run simulation """
         bench_sT = datetime.datetime.now()
@@ -92,12 +92,15 @@ class BifODE:
 
         """ Store results as a DataFrame """
 
+        print("\\init_x: ", init_x.shape)
+        print("\\max_val: ", max_values.shape)
+
         num_points = len(self.x)
         df = pd.DataFrame({
             "Q": self.params["Q"],
             "S": np.repeat(bif_S, num_points ** 2),  # Repeat S for each grid point
-            "x": np.tile(self.params["init_x"], num_S),
-            "y": np.tile(self.params["init_y"], num_S),
+            "x": np.tile(init_x, num_S),
+            "y": np.tile(init_y, num_S),
             "max_val": max_values.flatten(),
             "min_val": min_values.flatten()
         })
@@ -128,20 +131,21 @@ class BifODE:
                                                 tau1, b1, S, WE11, WE12, WI11, WI12,
                                                 tau2, b2, WE21, WE22, WI21, WI22)
 
-            num_steps, num_vars = x_hist.shape           # transpose
+            num_vars, num_steps  = x_hist.shape           # transpose
 
             x_max = np.full(num_vars, -np.inf)
             x_min = np.full(num_vars, np.inf)
 
             # max, min (numba does not support)
-            for j in prange(num_vars):
-                for i in range(num_steps):
+            for i in prange(num_vars):
+                for j in range(num_steps):
                     val = x_hist[i, j]
-                    if val > x_max[j]:
-                        x_max[j] = val
-                    if val < x_min[j]:
-                        x_min[j] = val
+                    if val > x_max[i]:
+                        x_max[i] = val
+                    if val < x_min[i]:
+                        x_min[i] = val
 
+            # per S, max and min of all conditions (x, y)
             max_values[idx, :] = x_max
             min_values[idx, :] = x_min
 

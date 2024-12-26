@@ -51,20 +51,14 @@ class PRODE:
         init_x = init_x.flatten()
         init_y = init_y.flatten()
 
-        num_IC = init_x.size
-
-        # Conditions of S
+        # Conditions of S, Q
         bif_S = np.arange(0, 0.81, 0.01)
-        num_S = len(bif_S)
-
-        # Conditions of Q
         bif_Q = np.arange(0, 0.81, 0.01)
-        num_Q = len(bif_Q)
 
         """ parameters """
 
         # time
-        sT, eT, h = 1000, 1300, params["h"]
+        sT, eT, h = 1500, 2000, params["h"]
 
         # params (fx)
         tau1, b1, WE11, WE12, WI11, WI12 = params['tau1'], params['b1'], params['WE11'], params['WE12'], params['WI11'], params['WI12']
@@ -133,17 +127,17 @@ class PRODE:
 
         num_Q = len(bif_Q)
         num_S = len(bif_S)
-        num_IC = init_x.size
+        num_init_conds = init_x.size
 
         # total
-        total_iterations = num_Q * num_S
+        total_params = num_Q * num_S
 
-        Q_list = np.empty(total_iterations)
-        S_list = np.empty(total_iterations)
-        x_max_list = [np.empty(num_IC) for _ in range(total_iterations)]
-        x_min_list = [np.empty(num_IC) for _ in range(total_iterations)]
+        Q_list = np.empty(total_params)
+        S_list = np.empty(total_params)
+        x_max_list = [np.empty(num_init_conds) for _ in range(total_params)]
+        x_min_list = [np.empty(num_init_conds) for _ in range(total_params)]
 
-        for idx in prange(total_iterations):
+        for idx in prange(total_params):
 
             Q_idx = idx // num_S
             S_idx = idx % num_S
@@ -180,28 +174,29 @@ class PRODE:
 
             """ get maximum and minimum """
 
-            num_steps, num_vars = x_hist.shape
+            num_vars, num_steps  = x_hist.shape
 
             x_max = np.full(num_vars, -np.inf)
             x_min = np.full(num_vars, np.inf)
 
             # max, min (numba does not support)
-            for j in prange(num_vars):
-                for i in range(num_steps):
+            for i in range(num_vars):
+                for j in range(num_steps):
                     val = x_hist[i, j]
-                    if val > x_max[j]:
-                        x_max[j] = val
+                    if val > x_max[i]:
+                        x_max[i] = val
 
-                    if val < x_min[j]:
-                        x_min[j] = val
+                    if val < x_min[i]:
+                        x_min[i] = val
 
             Q_list[idx] = Q
             S_list[idx] = S
+
+            # (init_conds, val)
             x_max_list[idx] = x_max
             x_min_list[idx] = x_min
 
         return Q_list, S_list, x_max_list, x_min_list
-
 
 
     def analyze_results(self, Q, S, x_max, x_min):
