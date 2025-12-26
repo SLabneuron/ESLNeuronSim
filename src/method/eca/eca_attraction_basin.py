@@ -82,7 +82,7 @@ class ABECA:
         x_min_hist = np.zeros((val_conds, all_conds))
         y_max_hist = np.zeros((val_conds, all_conds))
         y_min_hist = np.zeros((val_conds, all_conds))
-        
+
         print("x_max_hist: ", x_max_hist.shape)
 
 

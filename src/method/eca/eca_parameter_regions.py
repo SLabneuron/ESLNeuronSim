@@ -13,6 +13,16 @@ Contents: parameter region analysis for bifurcation diagram with two parameters 
 
     Fixed: P, Q, phX, phY
 
+
+## Benchmark
+
+### Case1
+    Parameter space: 80x80
+    State space    : 32x32
+    Total #sim     : 37 min
+
+
+
 """
 
 # import standard library

@@ -42,26 +42,32 @@ class GraphicPhasePlain:
             # settings
             self.plt.set_xlim(0, 1)
             self.plt.set_ylim(0, 1)
-            self.plt.set_xlabel("y")
-            self.plt.set_ylabel("x")
+            self.plt.set_xticks([0, 0.25, 0.5, 0.75, 1])
+            self.plt.set_yticks([0, 0.25, 0.5, 0.75, 1])
+            self.plt.set_xlabel(r"$y$")
+            self.plt.set_ylabel(r"$x$")
 
         # For SynCA or ErCA
         elif mode in ["SynCA", "ErCA"]:
 
             """ setting config of plt """
 
+            N_max = self.master.params["N"]
+
             # settings
-            self.plt.set_xlim(0, self.master.params["N"])
-            self.plt.set_ylim(0, self.master.params["N"])
-            self.plt.set_xlabel("Y")
-            self.plt.set_ylabel("X")
+            self.plt.set_xlim(0, N_max)
+            self.plt.set_ylim(0, N_max)
+            self.plt.set_xticks([0, N_max/4, N_max/4*2, N_max/4*3, N_max])
+            self.plt.set_yticks([0, N_max/4, N_max/4*2, N_max/4*3, N_max])
+            self.plt.set_xlabel(r"$Y$")
+            self.plt.set_ylabel(r"$X$")
 
 
     def plot_result(self, X_hist, Y_hist):
 
         """ plot results (phase portrait) """
 
-        self.plt.scatter(Y_hist, X_hist, marker=".", s=0.5)
+        self.plt.scatter(Y_hist, X_hist, marker="o", color="black", s=0.2)
 
 
     def plot_nullcline(self, x2, x1, y2, y1):
@@ -88,15 +94,15 @@ class GraphicPhasePlain:
         if mode in ["fem", "rk4", "ode45"]:
 
             # plot nullcline
-            self.plt.scatter(x2, x1, marker=".", s=0.5)
-            self.plt.scatter(y2, y1, marker=".", s=0.5)
+            self.plt.scatter(x2, x1, marker=".", s=0.2)
+            self.plt.scatter(y2, y1, marker=".", s=0.2)
 
         # SynCA, ErCA
         elif mode in ["SynCA", "ErCA"]:
 
             # plot nullcline
-            self.plt.scatter(x2*self.master.params["s1"], x1*self.master.params["s1"], marker=".", s=0.1)
-            self.plt.scatter(y2*self.master.params["s2"], y1*self.master.params["s2"], marker=".", s=0.1)
+            self.plt.scatter(x2*self.master.params["s1"], x1*self.master.params["s1"], marker=".", s=0.2)
+            self.plt.scatter(y2*self.master.params["s2"], y1*self.master.params["s2"], marker=".", s=0.2)
 
 
     def plot_nodes(self, eset_x, eset_y, states):

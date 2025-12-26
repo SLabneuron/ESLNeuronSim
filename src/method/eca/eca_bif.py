@@ -16,6 +16,9 @@ Benchmark:
 
     size of X, Y = 64*64 -> 14 minutes
     size of X, Y = 32*64 -> 3.5 minutes
+    
+    size of X, Y = 32*32 -> 50 sec
+    size of X, Y = 32*32 -> 24 sec (lut access)
 
 """
 
@@ -29,7 +32,7 @@ from numba import njit, prange
 import datetime
 
 # import my library
-from src.method.eca.eca_basic import  calc_time_evolution_eca
+from src.method.eca.eca_basic import  calc_time_evolution_eca, _make_lut_numpy, _make_lut_numba
 
 
 class BifECA:
@@ -152,11 +155,14 @@ class BifECA:
 
             S = bif_S[idx]
 
+            Fin, Gin = _make_lut_numba(N, M, s1, s2, gamma_X, gamma_Y, Tc, Tx, Ty,
+                                        tau1, b1, S, WE11, WE12, WI11, WI12,
+                                        tau2, b2, WE21, WE22, WI21, WI22)
+
             _, x_hist, _ = calc_time_evolution_eca(init_x, init_y, init_P, init_Q, init_phX, init_phY,
-                                                         N, M, s1, s2, gamma_X, gamma_Y, Tc, Tx, Ty,
-                                                         sT, eT,
-                                                         tau1, b1, S, WE11, WE12, WI11, WI12,
-                                                         tau2, b2, WE21, WE22, WI21, WI22)
+                                                    N, M, Tc, Tx, Ty,
+                                                    sT, eT, Fin, Gin)
+
 
             num_vars, num_steps = x_hist.shape
 

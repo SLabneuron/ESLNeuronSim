@@ -77,7 +77,7 @@ class PhasePlanePlotter:
 
 if __name__ == "__main__":
 
-    # filepath
+    # ErCA attraction basin
     filename = r"C:\Storage\02_paper\03_2025_TEEE\04_Python\data\results\set 1\ErCA\condition_1\attraction basin\attraction_basin_Q_0.4_S_0.52_time_20241222225819.csv"
 
     match = re.search(r"set \d+\\([^\\]+)\\", filename)

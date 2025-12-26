@@ -21,7 +21,7 @@ import datetime
 
 from src.analyses.analysis_null_cline import Nullcline
 
-from src.method.euler.ode_basic import  calc_time_evolution_ode
+from src.method.euler.ode_basic import calc_time_evolution_ode
 
 from src.graphics.graphic_attraction_basin import PhasePlanePlotter
 

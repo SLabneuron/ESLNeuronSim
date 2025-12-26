@@ -36,6 +36,7 @@ import json
 import datetime
 
 
+
 class DataLibrarian:
     def __init__(self, params):
 
@@ -118,11 +119,13 @@ class DataLibrarian:
             # self.results_dir 内の data_lib.json の中身を確認
             data_lib_json_path = os.path.join(self.result_dir, 'data_lib.json')
 
-            if os.path.exists(data_lib_json_path):
-                with open(data_lib_json_path, 'r') as f:
-                    data_lib = json.load(f)
-            else:
-                data_lib = {}
+            #if os.path.exists(data_lib_json_path):
+            #    with open(data_lib_json_path, 'r') as f:
+            #        data_lib = json.load(f)
+            #else:
+            #    data_lib = {}
+            
+            data_lib = safe_load_json(data_lib_json_path)
 
             # モデルごとのデータを取得
             model_data = data_lib.get(self.model_jname, {})
@@ -195,6 +198,8 @@ class DataLibrarian:
             csv_filename = f'parameter_region_time_{now_str}.csv'
         elif self.sim_jname == "attraction basin":
             csv_filename = f'attraction_basin_Q_{now_Q}_S_{now_S}_time_{now_str}.csv'
+        elif self.sim_jname == "ReturnMap":
+            csv_filename = f'return_map_{now_str}.csv'
         csv_filepath = os.path.join(self.sim_dir, csv_filename)
 
         # CSV ファイルを作成（ここでは空のファイルを作成）
@@ -206,11 +211,13 @@ class DataLibrarian:
         # data_lib.json にディレクトリ構造と CSV ファイル名を保存
         data_lib_json_path = os.path.join(self.result_dir, 'data_lib.json')
 
-        if os.path.exists(data_lib_json_path):
-            with open(data_lib_json_path, 'r') as f:
-                data_lib = json.load(f)
-        else:
-            data_lib = {}
+        #if os.path.exists(data_lib_json_path):
+        #    with open(data_lib_json_path, 'r') as f:
+        #        data_lib = json.load(f)
+        #else:
+        #    data_lib = {}
+        
+        data_lib = safe_load_json(data_lib_json_path)
 
         # ディレクトリ構造を更新
         set_jname = self.set_jname
@@ -251,17 +258,29 @@ class DataLibrarian:
             'simulation': self.params["simulation"]
         }
 
-        # ErCA, SynCA の場合はパラメータを埋める
+        # only ErCA, SynCA の場合はパラメータを埋める
         if model_jname in ["ErCA", "SynCA"]:
             ca_params_key = ['N', 'M', 's1', 's2', 'gamma_X', 'gamma_Y',
                              'Tc', 'Tx_rat', 'Tx_sqrt', 'Ty_rat', 'Ty_sqrt']
             for key in ca_params_key:
                 row[key] = self.params.get(key, '')
-                
-                
+
+
         # return self.save_path
         self.save_path = csv_filepath
 
-        # データフレームに行を追加
+        # add a row in dataframe
         df = pd.concat([df, pd.DataFrame([row])], ignore_index=True)
         df.to_csv(data_lib_csv_path, index=False)
+
+
+def safe_load_json(file_path):
+    """
+    ファイルが存在し、サイズが 0 でなければ JSON を読み込み、
+    それ以外は 空の dict を返す
+    """
+    if os.path.exists(file_path) and os.path.getsize(file_path) > 0:
+        with open(file_path, 'r', encoding='utf-8') as f:
+            return json.load(f)
+    else:
+        return {}
