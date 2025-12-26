@@ -44,37 +44,43 @@ class GraphicTimeWaveform:
             # settings
             self.plt1.set_xlim(self.master.params["sT"], self.master.params["eT"])
             self.plt1.set_ylim(0, 1)
-            self.plt1.set_ylabel("x")
+            self.plt1.set_yticks([0, 0.25, 0.5, 0.75, 1])
+            self.plt1.set_ylabel(r"$x$")
 
             """ setting config of plt2 """
 
             # settings
             self.plt2.set_xlim(self.master.params["sT"], self.master.params["eT"])
             self.plt2.set_ylim(0, 1)
-            self.plt2.set_xlabel("Time t")
-            self.plt2.set_ylabel("y")
+            self.plt2.set_yticks([0, 0.25, 0.5, 0.75, 1])
+            self.plt2.set_xlabel(r"$\mathrm{Time} \;\; t$")
+            self.plt2.set_ylabel(r"$y$")
 
         # For SynCA or ErCA
         elif mode in ["SynCA", "ErCA"]:
 
             """ setting config of plt1 """
+            
+            N_max = self.master.params["N"]
 
             # settings
             self.plt1.set_xlim(self.master.params["sT"], self.master.params["eT"])
-            self.plt1.set_ylim(0, self.master.params["N"])
-            self.plt1.set_ylabel("X")
+            self.plt1.set_ylim(0, N_max)
+            self.plt1.set_yticks([0, N_max/4, N_max/4*2, N_max/4*3, N_max])
+            self.plt1.set_ylabel(r"$X$")
 
             """ setting config of plt2 """
 
             # settings
             self.plt2.set_xlim(self.master.params["sT"], self.master.params["eT"])
-            self.plt2.set_ylim(0, self.master.params["N"])
-            self.plt2.set_xlabel("Time t")
-            self.plt2.set_ylabel("Y")
+            self.plt2.set_ylim(0, N_max)
+            self.plt2.set_yticks([0, N_max/4, N_max/4*2, N_max/4*3, N_max])
+            self.plt2.set_xlabel(r"$\mathrm{Time} \;\; t$")
+            self.plt2.set_ylabel(r"$Y$")
 
 
     def plot(self, T_hist, X_hist, Y_hist):
 
-        self.plt1.scatter(T_hist, X_hist, marker=".", s=0.5)
-        self.plt2.scatter(T_hist, Y_hist, marker=".", s=0.5)
+        self.plt1.scatter(T_hist, X_hist, marker="o", color="black" ,s=0.2)
+        self.plt2.scatter(T_hist, Y_hist, marker="o", color="black" ,s=0.2)
 

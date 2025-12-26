@@ -16,6 +16,9 @@ Benchmark:
 
     size of X, Y = 64*64 -> 14 minutes
     size of X, Y = 32*64 -> 3.5 minutes
+    
+    size of X, Y = 32*32 -> 50 sec
+    size of X, Y = 32*32 -> 24 sec (lut access)
 
 """
 
@@ -29,7 +32,7 @@ from numba import njit, prange
 import datetime
 
 # import my library
-from src.method.eca.eca_basic import  calc_time_evolution_eca
+from src.method.eca.eca_basic import  calc_time_evolution_eca, _make_lut_numpy, _make_lut_numba
 
 
 class BifECA:
@@ -152,25 +155,28 @@ class BifECA:
 
             S = bif_S[idx]
 
-            _, x_hist, _ = calc_time_evolution_eca(init_x, init_y, init_P, init_Q, init_phX, init_phY,
-                                                         N, M, s1, s2, gamma_X, gamma_Y, Tc, Tx, Ty,
-                                                         sT, eT,
-                                                         tau1, b1, S, WE11, WE12, WI11, WI12,
-                                                         tau2, b2, WE21, WE22, WI21, WI22)
+            Fin, Gin = _make_lut_numba(N, M, s1, s2, gamma_X, gamma_Y, Tc, Tx, Ty,
+                                        tau1, b1, S, WE11, WE12, WI11, WI12,
+                                        tau2, b2, WE21, WE22, WI21, WI22)
 
-            num_steps, num_vars = x_hist.shape
+            _, x_hist, _ = calc_time_evolution_eca(init_x, init_y, init_P, init_Q, init_phX, init_phY,
+                                                    N, M, Tc, Tx, Ty,
+                                                    sT, eT, Fin, Gin)
+
+
+            num_vars, num_steps = x_hist.shape
 
             x_max = np.full(num_vars, -np.inf)
             x_min = np.full(num_vars, np.inf)
 
             # max, min (numba does not support)
-            for j in prange(num_vars):
-                for i in range(num_steps):
+            for i in range(num_vars):
+                for j in range(num_steps):
                     val = x_hist[i, j]
-                    if val > x_max[j]:
-                        x_max[j] = val
-                    if val < x_min[j]:
-                        x_min[j] = val
+                    if val > x_max[i]:
+                        x_max[i] = val
+                    if val < x_min[i]:
+                        x_min[i] = val
 
             max_values[idx, :] = x_max
             min_values[idx, :] = x_min

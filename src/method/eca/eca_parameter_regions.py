@@ -13,6 +13,16 @@ Contents: parameter region analysis for bifurcation diagram with two parameters 
 
     Fixed: P, Q, phX, phY
 
+
+## Benchmark
+
+### Case1
+    Parameter space: 80x80
+    State space    : 32x32
+    Total #sim     : 37 min
+
+
+
 """
 
 # import standard library
@@ -62,17 +72,11 @@ class PRECA:
         init_x = init_x.flatten()
         init_y = init_y.flatten()
 
-        num_IC = init_x.size        # initial conditions
+        num_init_conds = init_x.size        # initial conditions
 
-        """ bifurcation """
-
-        # Condition of S
+        # Conditions of S, Q
         bif_S = np.arange(0, 0.81, 0.01)
-        num_S = len(bif_S)
-
-        # Condition of Q
         bif_Q = np.arange(0, 0.81, 0.01)
-        num_Q = len(bif_Q)
 
 
         """ paramters """
@@ -159,18 +163,18 @@ class PRECA:
 
         num_Q = len(bif_Q)
         num_S = len(bif_S)
-        num_IC = init_x.size
+        num_init_conds = init_x.size
 
         # total
-        total_iterations = num_Q * num_S
+        total_params = num_Q * num_S
 
-        Q_list = np.empty(total_iterations)
-        S_list = np.empty(total_iterations)
-        x_max_list = [np.empty(num_IC) for _ in range(total_iterations)]
-        x_min_list = [np.empty(num_IC) for _ in range(total_iterations)]
+        Q_list = np.empty(total_params)
+        S_list = np.empty(total_params)
+        x_max_list = [np.empty(num_init_conds) for _ in range(total_params)]
+        x_min_list = [np.empty(num_init_conds) for _ in range(total_params)]
 
         # loop
-        for idx in prange(total_iterations):
+        for idx in prange(total_params):
 
             Q_idx = idx // num_S
             S_idx = idx % num_S
@@ -208,20 +212,20 @@ class PRECA:
 
             """ get maximum and minimum """
 
-            num_steps, num_vars = x_hist.shape
+            num_vars, num_steps  = x_hist.shape
 
             x_max = np.full(num_vars, -np.inf)
             x_min = np.full(num_vars, np.inf)
 
             # max, min (numba does not support)
-            for j in prange(num_vars):
-                for i in range(num_steps):
+            for i in range(num_vars):
+                for j in range(num_steps):
                     val = x_hist[i, j]
-                    if val > x_max[j]:
-                        x_max[j] = val
+                    if val > x_max[i]:
+                        x_max[i] = val
 
-                    if val < x_min[j]:
-                        x_min[j] = val
+                    if val < x_min[i]:
+                        x_min[i] = val
 
             Q_list[idx] = Q
             S_list[idx] = S
@@ -233,12 +237,8 @@ class PRECA:
 
     def analyze_results(self, Q, S, x_max, x_min):
 
-        # round operation
-        x_max_rounded = np.round(x_max, 3)
-        x_min_rounded = np.round(x_min, 3)
-
         # [(x_max[0], x_min[0]), (x_max[1], x_min[1]), ...]
-        x_max_min = np.column_stack((x_max_rounded, x_min_rounded))
+        x_max_min = np.column_stack((x_max, x_min))
 
         # get unique (max, min) combination
         x_max_min_sort = np.unique(x_max_min, axis=0)

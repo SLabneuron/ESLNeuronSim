@@ -30,32 +30,31 @@ def _make_lut_numba(N, M, s1, s2, gamma_X, gamma_Y, Tc, Tx, Ty,
         F = (1/tau1)*((b1*S+WE11*(x/s1)**2+WE12*(y/s2)**2)*(1-x/s1)
                         -(1+WI11*(x/s1)**2+WI12*(y/s2)**2)*x/s1)
 
-        if F >= 0 and F < 0.0001:
+        if F >= 0 and F < 0.001:
             Fin[x, y] = M-1
-        elif F < 0 and F > -0.0001:
-            Fin[x, y] = -(M-1)
-        elif F >= 0 and F >=0.0001:
+        elif F >= 0 and F >=0.001:
             Fin[x, y] = math.ceil(1/(gamma_X*F/(Tc/Tx)))
+        elif F < 0 and F < -0.001:
+            Fin[x, y] = -(M-1)
         else:
             Fin[x, y] = math.floor(1/(gamma_X*F/(Tc/Tx)))
 
         G = (1/tau2)*((b2*S+WE21*(x/s1)**2+WE22*(y/s2)**2)*(1-y/s2)
                         -(1+WI21*(x/s1)**2+WI22*(y/s2)**2)*y/s2)
 
-        if G >= 0 and G < 0.0001:
+        if G >= 0 and G < 0.001:
             Gin[x, y] = M-1
-        elif G < 0 and G > -0.0001:
-            Gin[x, y] = -(M-1)
-        elif G >= 0 and G >=0.0001:
+        elif G >= 0 and G >=0.001:
             Gin[x, y] = math.ceil(1/(gamma_Y*G/(Tc/Ty)))
-
+        elif G < 0 and G < -0.001:
+            Gin[x, y] = -(M-1)
         else:
             Gin[x, y] = math.floor(1/(gamma_Y*G/(Tc/Ty)))
 
     return Fin, Gin
 
 
-@njit
+
 def _make_lut_numpy(N, M, s1, s2, gamma_X, gamma_Y, Tc, Tx, Ty,
               tau1, b1, S, WE11, WE12, WI11, WI12,
               tau2, b2, WE21, WE22, WI21, WI22):

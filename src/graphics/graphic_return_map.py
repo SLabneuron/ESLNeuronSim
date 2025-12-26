@@ -14,54 +14,89 @@ Contents:
 
 # import standard library
 import numpy as np
+import matplotlib.pyplot as plt
 
-class GraphicSwitchPhase:
+class GraphicReMap:
 
-    def __init__(self, master):
+    def __init__(self):
 
         """ Set arguments """
 
-        # get parameter class
-        self.master = master
+        self.fig, self.axs= plt.subplots(2, 2, figsize=(8, 8))
 
         # config plot area
-        self.config_plot_area()
+        self._config_plot_area()
 
 
-    def config_plot_area(self):
+    def _config_plot_area(self):
+        
+        # settings (0)
 
-        self.plt = self.master.axes["phase of switch"]
-
-        # clear plt
-        self.plt.clear()
-
-        # settings
-        self.plt.set_xlim(0, 1)
-        self.plt.set_ylim(0, 1)
-        self.plt.set_xlabel("n")
-        self.plt.set_ylabel("n+1")
+        self.axs[0][0].set_xlabel("n")
+        self.axs[0][0].set_ylabel("n+1")
+        self.axs[0][0].set_xticks(range(0, 64))
+        self.axs[0][0].set_yticks(range(0, 64))
+        self.axs[0][0].grid()
 
         # plot 45 degree line
-        self.plt.plot([0,1], [0,1], c="black", lw=0.5)
+        self.axs[0][0].plot([0,63], [0,63], c="black", lw=0.5)
+
+        # settings (1)
+
+        self.axs[0][1].set_xlabel("n")
+        self.axs[0][1].set_ylabel("n+1")
+        self.axs[0][1].set_xticks(range(0, 64))
+        self.axs[0][1].set_yticks(range(0, 64))
+        self.axs[0][1].grid()
+
+        # plot 45 degree line
+        self.axs[0][1].plot([0,63], [0,63], c="black", lw=0.5)
+        
+        # settings (2)
+
+        self.axs[1][0].set_xlabel("y_n")
+        self.axs[1][0].set_ylabel("x_n")
+        self.axs[1][0].set_xticks(range(0, 64))
+        self.axs[1][0].set_yticks(range(0, 64))
+        self.axs[1][0].grid()
+
+        # settings (3)
+
+        self.axs[1][1].set_xlabel("y_n+1")
+        self.axs[1][1].set_ylabel("x_n+1")
+        self.axs[1][1].set_xticks(range(0, 64))
+        self.axs[1][1].set_yticks(range(0, 64))
+        self.axs[1][1].grid()
 
 
-    def plot_return_map(self, phase):
+    def plot(self, x1, x2, y1, y2):
+        
+        x_min, x_max = min(min(x1), min(y1))-2, max(max(x1), max(y1))+2
+        y_min, y_max = min(min(x2), min(y2))-2, max(max(x2), max(y2))+2
+        
+        
+        # return map of x
+        self.axs[0][0].set_xlim(x_min, x_max)
+        self.axs[0][0].set_ylim(x_min, x_max)
 
-        """ plot return map """
+        self.axs[0][0].scatter(x1, y1)
+        
+        # return map of y
+        self.axs[0][1].set_xlim(y_min, y_max)
+        self.axs[0][1].set_ylim(y_min, y_max)
 
-        # phase plot
-        n_pre = phase[:-1]
-        n_next = phase[1:]
+        self.axs[0][1].scatter(x2, y2)
 
-        self.plt.scatter(n_pre, n_next, marker=".", s=0.5)
+        # 2d retrun map of (x_n, y_n)
+        self.axs[1][0].set_xlim(x_min, x_max)
+        self.axs[1][0].set_ylim(y_min, y_max)
 
-        # transit
-        transit_x = np.empty((n_pre.size, n_next.size,), dtype=n_pre.dtype)
-        transit_x[0::2] = n_pre
-        transit_x[1::2] = n_next
+        self.axs[1][0].scatter(x1, x2)
 
-        transit_y  = np.empty_like(transit_x)
-        transit_y[0::2] = n_next
-        transit_y[1::2] = n_next
+        # 2d retrun map of (x_n+1, y_n+1)
+        self.axs[1][1].set_xlim(x_min, x_max)
+        self.axs[1][1].set_ylim(y_min, y_max)
 
-        self.plt.plot(transit_x, transit_y, c="gray", lw=0.3)
+        self.axs[1][1].scatter(y1, y2)
+
+        plt.show()

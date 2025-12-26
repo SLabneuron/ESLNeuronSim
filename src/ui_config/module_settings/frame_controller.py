@@ -19,7 +19,7 @@ Return:
 
     - master.combos["model"]
 
-        fem, rk4, ode45, SynCA, ErCA
+        fem, SynCA, ErCA
 
     - master.combos["simulation"]
 
@@ -28,7 +28,6 @@ Return:
         parameter region
         attraction basin
         Poincare map (return map)
-        stability
 
 """
 
@@ -71,12 +70,12 @@ class FrControl:
 
             selected_value = combo0.get()
 
-            if selected_value in ["fem", "rk4", "ode45"]:
+            if selected_value in ["fem"]:
                 self.toggle_widgets("fr_ni")
             else:
                 self.toggle_widgets("fr_ca")
 
-        combo0_value = ["fem", "rk4", "ode45", "SynCA", "ErCA"]
+        combo0_value = ["fem", "SynCA", "ErCA"]
         combo0 = ttk.Combobox(fr, values=combo0_value, width=15)
         combo0.grid(row=0, column=1, padx=2, pady=2)
         combo0.set("ErCA")  # Default value
@@ -89,7 +88,7 @@ class FrControl:
         text1 = ttk.Label(fr, text="Simulation:", style="Custom1.TLabel")
         text1.grid(row=1, column=0, padx=2, pady=2, sticky=tk.W)
 
-        combo1_value = ["time evolution", "bifurcation", "parameter region", "attraction basin", "Poincare Map", "Stability"]
+        combo1_value = ["time evolution", "bifurcation", "parameter region", "attraction basin", "ReturnMap"]
         combo1 = ttk.Combobox(fr, values=combo1_value, width=15)
         combo1.grid(row=1, column=1, padx=2, pady=2)
         combo1.set("time evolution")  # Default value

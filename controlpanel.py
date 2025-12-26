@@ -13,6 +13,7 @@ Contents:
 
 # import standard library
 
+
 import tkinter as tk
 from tkinter import ttk
 import os
@@ -47,7 +48,7 @@ class ControlPanel:
         """ size setting """
 
         # main size
-        self.root.geometry("1000x600")
+        self.root.geometry("1000x650")
 
         """ Style Settings """
 
@@ -63,6 +64,9 @@ class ControlPanel:
         # frame style2: "Custom2.TFrame"
         style.configure("Custom2.TFrame",
                         background = "lightgray")
+        
+        style.configure("Graphic.TFrame",
+                        background = "white")
 
         # label style1: "Custom1.TLabel"
         style.configure("Custom1.TLabel",
@@ -74,7 +78,10 @@ class ControlPanel:
                         background = "lightgray")
 
         # matplotlib font size
-        plt.rcParams.update({"font.size":8})
+        plt.rcParams.update({"font.size":10,
+                             "font.family":"serif",
+                             "font.serif": ["Times New Roman"],
+                             "mathtext.fontset": "stix"})
 
 
     def set_up(self):

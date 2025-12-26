@@ -53,7 +53,7 @@ import datetime
 
 # import my library
 from src.method.euler.ode_basic import calc_time_evolution_ode
-from src.method.eca.eca_basic import calc_time_evolution_eca
+from src.method.eca.eca_basic import calc_time_evolution_eca, _make_lut_numba, _make_lut_numpy
 
 from src.method.euler.ode_attraction_basin import ABODE
 from src.method.eca.eca_attraction_basin import ABECA
@@ -64,7 +64,7 @@ from src.method.eca.eca_bif import BifECA
 from src.method.euler.ode_parameter_rigions import PRODE
 from src.method.eca.eca_parameter_regions import PRECA
 
-from src.graphics.graphic_heatmap import graphic_ab, graphic_pr
+from src.method.eca.eca_return_map import EcaReMap
 
 
 
@@ -136,6 +136,9 @@ class MethodSelects:
             self.master.results_pr = PRODE(self.master.params, self.file_name)
             self.master.results_pr.run()
 
+        elif sim_type == "ReturnMap":
+            print("This function is not supported.")
+
 
     def sim_ca(self, sim_type):
 
@@ -149,7 +152,7 @@ class MethodSelects:
             params = self.master.params
 
             # variables
-            init_x, init_y = np.atleast_1d(params["init_x"]).astype(np.int32), np.atleast_1d(params["init_y"]).astype(np.int32)
+            init_x, init_y = np.atleast_1d(params["init_X"]).astype(np.int32), np.atleast_1d(params["init_Y"]).astype(np.int32)
             init_P, init_Q = np.atleast_1d(params["init_P"]).astype(np.int32), np.atleast_1d(params["init_Q"]).astype(np.int32)
             init_phX, init_phY = np.atleast_1d(params["init_phX"]).astype(np.float64), np.atleast_1d(params["init_phY"]).astype(np.float64)
 
@@ -168,11 +171,14 @@ class MethodSelects:
             bench_sT = datetime.datetime.now()
             print("\n start: ", bench_sT)
 
+            Fin, Gin = _make_lut_numba(N, M, s1, s2, gamma_X, gamma_Y, Tc, Tx, Ty,
+                                       tau1, b1, S, WE11, WE12, WI11, WI12,
+                                       tau2, b2, WE21, WE22, WI21, WI22)
+
             t_hist, x_hist, y_hist = calc_time_evolution_eca(init_x, init_y, init_P, init_Q, init_phX, init_phY,
-                                                             N, M, s1, s2, gamma_X, gamma_Y, Tc, Tx, Ty,
-                                                             sT, eT,
-                                                             tau1, b1, S, WE11, WE12, WI11, WI12,
-                                                             tau2, b2, WE21, WE22, WI21, WI22)
+                                                             N, M, Tc, Tx, Ty,
+                                                             sT, eT, Fin, Gin)
+
 
             bench_eT = datetime.datetime.now()
             print("end: ", bench_eT)
@@ -180,6 +186,8 @@ class MethodSelects:
             print("bench mark: ", bench_eT - bench_sT)
 
             self.master.results = Results(t_hist, x_hist, y_hist)
+            
+            print(f"x: {min(min(x_hist))}--{max(max(x_hist))}, y: {min(min(y_hist))}--{max(max(y_hist))}" )
 
             # validation
             # self.state_analyzer()
@@ -187,6 +195,9 @@ class MethodSelects:
         elif sim_type == "attraction basin":
             self.master.results_ab = ABECA(self.master, self.file_name)
             self.master.results_ab.run()
+
+        elif sim_type == "ReturnMap":
+            results_ReMap = EcaReMap(self.master, self.file_name)
 
         # Global Analyses
 
@@ -197,6 +208,8 @@ class MethodSelects:
         elif sim_type == "parameter region":
             self.master.results_pr = PRECA(self.master.params, self.file_name)
             self.master.results_pr.run()
+
+
 
 
     def state_analyzer(self):
