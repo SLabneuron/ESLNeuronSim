@@ -14,9 +14,11 @@ import numpy as np
 import pandas as pd
 import os
 
+import numba
+numba.set_num_threads(15)
 from numba import njit, prange
 
-import datetime
+import datetime, time
 
 # import my library
 from src.method.euler.ode_basic import calc_time_evolution_ode
@@ -38,65 +40,85 @@ class PRODE:
 
     def run(self):
 
-        """ Conditions """
+        """ Initialization """
 
+        # get params
         params = self.params
 
         # variables
-        self.x = np.arange(0, 0.81, 0.02)
-        self.y = np.arange(0, 0.81, 0.02)
+        x = np.arange(0, 0.80, 0.05)
+        y = np.arange(0, 0.80, 0.05)
 
-        init_x, init_y = np.meshgrid(self.x, self.y)
+        xx_mesh, yy_mesh = np.meshgrid(x, y)
+        xx, yy = xx_mesh.flatten(), yy_mesh.flatten()
+        conds_size = xx.size
 
-        init_x = init_x.flatten()
-        init_y = init_y.flatten()
-
-        # Conditions of S, Q
-        bif_S = np.arange(0, 0.81, 0.01)
-        bif_Q = np.arange(0, 0.81, 0.01)
-
-        """ parameters """
-
-        # time
-        sT, eT, h = 1500, 2000, params["h"]
-
-        # params (fx)
+        # parameter
+        sT, eT, h = 1000, 1500, params["h"]
         tau1, b1, WE11, WE12, WI11, WI12 = params['tau1'], params['b1'], params['WE11'], params['WE12'], params['WI11'], params['WI12']
-
-        # params (fy)
         tau2, b2, WE21, WE22, WI21, WI22 = params['tau2'], params['b2'], params['WE21'], params['WE22'], params['WI21'], params['WI22']
 
-        # parameter set
-        pset = params["param set"]
+        # store step
+        total_step = int(eT/h)+1
+        index_start = int(sT/h)
+        store_step = (total_step - index_start) // 100 + 1 if total_step > index_start else 0
+
+        """ bifurcation """
+
+        # Conditions of S, Q
+        bif_S = np.arange(0.20, 0.70, 0.005)
+        bif_Q = np.arange(0.20, 0.70, 0.005)
+
+        num_S = bif_S.size
+        num_Q = bif_Q.size
+
+        # for store results
+        S_hist = np.zeros((num_S, num_Q, conds_size))
+        Q_hist = np.zeros((num_S, num_Q, conds_size))
+        xmax_hist = np.zeros((num_S, num_Q, conds_size))
+        xmin_hist = np.zeros((num_S, num_Q, conds_size))
 
         """ run simulation """
         bench_sT = datetime.datetime.now()
         print("\n start: ", bench_sT)
 
-        Q_list, S_list, x_max_list, x_min_list = self.calc_parameter_region(init_x, init_y,
-                                                                            sT, eT, h,
-                                                                            tau1, b1, WE11, WE12, WI11, WI12,
-                                                                            tau2, b2, WE21, WE22, WI21, WI22,
-                                                                            bif_Q, bif_S, pset)
+        for idx_s in range(num_S):
+
+            for idx_q in range(num_Q):
+
+                Q = bif_Q[idx_q]
+
+                # update relative values
+                if params["param set"] in ["set 1", "set 2", "set 3"]:
+                    b1, b2, WI12 = 0.13 * (1 + Q), 0, 0.5*Q
+
+                else:
+                    b1, b2, WI12 = 0.13*(1-Q), 0.26*Q, 0
+
+                x_max, x_min = self.calc_parameter_region(xx, yy, h,
+                                                          tau1, b1, bif_S[idx_s], WE11, WE12, WI11, WI12,
+                                                          tau2, b2, WE21, WE22, WI21, WI22,
+                                                          total_step, index_start, store_step)
+
+                S_hist[idx_s, idx_q, :] = bif_S[idx_s]
+                Q_hist[idx_s, idx_q, :] = Q
+                xmax_hist[idx_s, idx_q, :] = x_max
+                xmin_hist[idx_s, idx_q, :] = x_min
+
+                print("proccess: -*-*-*-*- ", round(((idx_s*num_S + idx_q)/ num_S/num_Q *100),  2), "% -*-*-*-*- ")
 
         bench_eT = datetime.datetime.now()
-        print("end: ", bench_eT)
 
+        print("end: ", bench_eT)
         print("bench mark: ", bench_eT - bench_sT)
 
         """ analysis state in (Q, S) """
-
         result_list = []
-        total_iterations = len(Q_list)
 
-        for idx in range(total_iterations):
-            Q = Q_list[idx]
-            S = S_list[idx]
-            x_max = x_max_list[idx]
-            x_min = x_min_list[idx]
-
-            result = self.analyze_results(Q, S, x_max, x_min)
-            result_list.append(result)
+        for idx_s in range(num_S):
+            for idx_q in range(num_Q):
+                result = self.analyze_results(bif_Q[idx_q], bif_S[idx_s], xmax_hist[idx_s, idx_q, :], xmin_hist[idx_s, idx_q, :])
+                result_list.append(result)
 
         """ Store results as a DataFrame """
 
@@ -118,85 +140,30 @@ class PRODE:
 
     @staticmethod
     @njit(parallel = True)
-    def calc_parameter_region(init_x, init_y,
-                                sT, eT, h,
-                                tau1, b1, WE11, WE12, WI11, WI12,
-                                tau2, b2, WE21, WE22, WI21, WI22,
-                                bif_Q, bif_S, pset
-                                ):
+    def calc_parameter_region(xx, yy, h,
+                              tau1, b1, S, WE11, WE12, WI11, WI12,
+                              tau2, b2, WE21, WE22, WI21, WI22,
+                              total_step, index_start, store_step):
 
-        num_Q = len(bif_Q)
-        num_S = len(bif_S)
-        num_init_conds = init_x.size
 
         # total
-        total_params = num_Q * num_S
+        total_conds = xx.size
 
-        Q_list = np.empty(total_params)
-        S_list = np.empty(total_params)
-        x_max_list = [np.empty(num_init_conds) for _ in range(total_params)]
-        x_min_list = [np.empty(num_init_conds) for _ in range(total_params)]
+        x_max_hist = np.empty(total_conds, dtype=np.float32)
+        x_min_hist = np.empty(total_conds, dtype=np.float32)
 
-        for idx in prange(total_params):
+        for idx in prange(total_conds):
 
-            Q_idx = idx // num_S
-            S_idx = idx % num_S
+            _, x_hist, _ = calc_time_evolution_ode(xx[idx], yy[idx], h,
+                                                   tau1, b1, S, WE11, WE12, WI11, WI12,
+                                                   tau2, b2, WE21, WE22, WI21, WI22,
+                                                   total_step, index_start, store_step)
 
-            Q = bif_Q[Q_idx]
-            S = bif_S[S_idx]
+            # return
+            x_max_hist[idx] = np.max(x_hist)
+            x_min_hist[idx] = np.min(x_hist)
 
-            if pset == "set 1" or pset == "set 2" or pset == "set 3":
-
-                # update relative values
-                b1 = 0.13 * (1 + Q)
-                b2 = 0
-                WI12 = 0.5*Q
-
-            elif pset == "set 4":
-
-                # update relative values
-                b1 = 0.13*(1-Q)
-                b2 = 0.26*Q
-                WI12 = 0
-
-            else:
-
-                # default
-                b1 = 0.13 * (1 + Q)
-                b2 = 0
-                WI12 = 0.5*Q
-
-            # Calculate
-            _, x_hist, _ = calc_time_evolution_ode(init_x, init_y,
-                                                    sT, eT, h,
-                                                    tau1, b1, S, WE11, WE12, WI11, WI12,
-                                                    tau2, b2, WE21, WE22, WI21, WI22)
-
-            """ get maximum and minimum """
-
-            num_vars, num_steps  = x_hist.shape
-
-            x_max = np.full(num_vars, -np.inf)
-            x_min = np.full(num_vars, np.inf)
-
-            # max, min (numba does not support)
-            for i in range(num_vars):
-                for j in range(num_steps):
-                    val = x_hist[i, j]
-                    if val > x_max[i]:
-                        x_max[i] = val
-
-                    if val < x_min[i]:
-                        x_min[i] = val
-
-            Q_list[idx] = Q
-            S_list[idx] = S
-
-            # (init_conds, val)
-            x_max_list[idx] = x_max
-            x_min_list[idx] = x_min
-
-        return Q_list, S_list, x_max_list, x_min_list
+        return x_max_hist, x_min_hist
 
 
     def analyze_results(self, Q, S, x_max, x_min):

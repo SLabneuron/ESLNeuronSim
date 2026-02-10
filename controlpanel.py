@@ -43,34 +43,30 @@ class ControlPanel:
     def root_config(self):
 
         # title
-        self.root.title("ECA Simulator, biochemical switch")
-
-        """ size setting """
+        self.root.title("ESL Simulator, biochemical switch")
 
         # main size
-        self.root.geometry("1000x650")
-
-        """ Style Settings """
+        self.root.geometry("1040x720")
 
         # style
         style = ttk.Style()
 
         # frame style1: "Custom1.TFrame"
         style.configure("Custom1.TFrame",
-                        background = "lightgray",
+                        background = "white",
                         borderwidth = 2,
                         relief="solid")
 
         # frame style2: "Custom2.TFrame"
         style.configure("Custom2.TFrame",
-                        background = "lightgray")
-        
+                        background = "white")
+
         style.configure("Graphic.TFrame",
                         background = "white")
 
         # label style1: "Custom1.TLabel"
         style.configure("Custom1.TLabel",
-                        background = "lightgray",
+                        background = "white",
                         foreground = "black")
 
         # radiobutton style1: "Custom1.TRadiobutton"

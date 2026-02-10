@@ -27,12 +27,15 @@ import numpy as np
 import pandas as pd
 import os
 
+import numba
+numba.set_num_threads(15)
 from numba import njit, prange
 
-import datetime
+import datetime, time
 
 # import my library
-from src.method.eca.eca_basic import  calc_time_evolution_eca, _make_lut_numpy, _make_lut_numba
+from src.method.eca.eca_basic import  calc_time_evolution_eca, _make_lut_numba, _make_rotated_lut_numba
+from src.graphics.graphic_lut import _make_rotated_coordinate
 
 
 class BifECA:
@@ -51,88 +54,87 @@ class BifECA:
 
     def run(self):
 
-        """ Condtions """
+        """ Initialization """
 
         # get params
         params = self.params
 
         # variables
-        self.x = np.arange(0, self.params["N"]-1, 2).astype(np.int32)
-        self.y = np.arange(0, self.params["N"]-1, 2).astype(np.int32)
+        x = np.arange(0, params["N"], 2, dtype=np.int16)
+        y = np.arange(0, params["N"], 2, dtype=np.int16)
 
-        init_x, init_y = np.meshgrid(self.x, self.y)
+        # meshgrid
+        xx_mesh, yy_mesh = np.meshgrid(x, y)
 
-        init_x = init_x.flatten()
-        init_y = init_y.flatten()
+        # flatten
+        xx, yy = xx_mesh.flatten(), yy_mesh.flatten()
+        conds_size = xx.size
 
-        num_IC = init_x.size
+        print("per a parameter: ", conds_size)
+
+        # parameters
+        sT, eT = params["sT"], params["eT"]
+        tau1, b1, WE11, WE12, WI11, WI12 = params['tau1'], params['b1'], params['WE11'], params['WE12'], params['WI11'], params['WI12']
+        tau2, b2, WE21, WE22, WI21, WI22 = params['tau2'], params['b2'], params['WE21'], params['WE22'], params['WI21'], params['WI22']
+        N, M, s1, s2, gamma_X, gamma_Y, Tc, Tx, Ty = params["N"], params["M"], params["s1"], params["s2"], params["gamma_X"], params["gamma_Y"], params["Tc"], params["Tx"], params["Ty"]
+
+        # store step
+        total_step = int(eT/Tc)+1
+        index_start = int(sT/Tc)
+        store_step = (total_step - index_start) // 100 + 1 if total_step > index_start else 0
+
 
         """ bifurcation """
 
         # Condtions of S
-        bif_S = np.arange(0, 0.81, 0.01)
-        num_S = len(bif_S)
+        bif_S = np.arange(0.20, 0.70, 0.005)
+        num_S = bif_S.size
 
-        """ parameters """
-
-        # Expand other parameters to match the size of xx and yy
-        init_P = np.full_like(init_x, self.params["init_P"], dtype=np.int32)
-        init_Q = np.full_like(init_x, self.params["init_Q"], dtype=np.int32)
-        init_phX = np.full_like(init_x, self.params["init_phX"], dtype=np.float64)
-        init_phY = np.full_like(init_x, self.params["init_phY"], dtype=np.float64)
-
-        # time
-        sT, eT = params["sT"], params["eT"]
-
-        # params (fx)
-        tau1, b1, WE11, WE12, WI11, WI12 = params['tau1'], params['b1'], params['WE11'], params['WE12'], params['WI11'], params['WI12']
-
-        # params (fy)
-        tau2, b2, WE21, WE22, WI21, WI22 = params['tau2'], params['b2'], params['WE21'], params['WE22'], params['WI21'], params['WI22']
-
-        # CA params
-        N, M, s1, s2, gamma_X, gamma_Y, Tc, Tx, Ty = params["N"], params["M"], params["s1"], params["s2"], params["gamma_X"], params["gamma_Y"], params["Tc"], params["Tx"], params["Ty"]
+        Q = params["Q"]
 
         # store hist
-        max_values = np.zeros((num_S, num_IC))
-        min_values = np.zeros((num_S, num_IC))
+        Q_hist = np.zeros((num_S, conds_size))
+        S_hist = np.zeros((num_S, conds_size))
+        max_hist = np.zeros((num_S, conds_size), dtype=np.int16)
+        min_hist = np.zeros((num_S, conds_size), dtype=np.int16)
 
         """ run simulation """
         bench_sT = datetime.datetime.now()
         print("\n start: ", bench_sT)
 
-        max_values, min_values = self.calc_bifurcation(init_x, init_y, init_P, init_Q, init_phX, init_phY,
-                        N, M, s1, s2, gamma_X, gamma_Y, Tc, Tx, Ty,
-                        sT, eT,
-                        tau1, b1, bif_S, WE11, WE12, WI11, WI12,
-                        tau2, b2, WE21, WE22, WI21, WI22,
-                        max_values, min_values)
+        for idx in range(num_S):
+
+            Fin, Gin = _make_lut_numba(N, M, s1, s2, gamma_X, gamma_Y, Tc, Tx, Ty,
+                                       tau1, b1, bif_S[idx], WE11, WE12, WI11, WI12,
+                                       tau2, b2, WE21, WE22, WI21, WI22)
+
+            x_max, x_min = self.calc_bifurcation(xx, yy, 0, 0, 0, 0,
+                                                 N, M, Tc, Tx, Ty,
+                                                 total_step, index_start, store_step, Fin, Gin)
+
+            Q_hist[idx, :] = Q
+            S_hist[idx, :] = bif_S[idx]
+            max_hist[idx, :] = x_max
+            min_hist[idx, :] = x_min
+
+            print("proccess: -*-*-*-*- ", round((idx/ num_S*100),  2), "% -*-*-*-*- ")
 
         bench_eT = datetime.datetime.now()
-        print("end: ", bench_eT)
 
+        print("end: ", bench_eT)
         print("bench mark: ", bench_eT - bench_sT)
+
 
         """ Store results as a DataFrame """
 
-        num_points = len(self.x)
-
-        # 各カラムデータの長さを揃える
-        Q_array = self.params["Q"]
-        S_array = np.repeat(bif_S, num_points ** 2)
-        X_array = np.tile(init_x, num_S)
-        Y_array = np.tile(init_y, num_S)
-        max_val_array = max_values.flatten()
-        min_val_array = min_values.flatten()
-
         df = pd.DataFrame({
-            "Q": Q_array,
-            "S": S_array,               # Repeat S for each grid point
-            "x": X_array,
-            "y": Y_array,
-            "max_val": max_val_array,
-            "min_val": min_val_array
+            "Q": Q_hist.flatten(),
+            "S": S_hist.flatten(),
+            "max_val": max_hist.flatten(),
+            "min_val": min_hist.flatten()
         })
+
+        df = df[["Q", "S", "max_val", "min_val"]]
 
         """ Save to CSV """
         try:
@@ -142,43 +144,126 @@ class BifECA:
             print(f"Error saving results to {self.filename}: {e}")
 
 
+
+    def run_rotated(self):
+
+        """ Initialization """
+
+        # get params
+        params = self.params
+
+        # variables
+        x = np.arange(0, params["N"], 2, dtype=np.int16)
+        y = np.arange(0, params["N"], 2, dtype=np.int16)
+
+        # meshgrid
+        xx_mesh, yy_mesh = np.meshgrid(x, y)
+
+        # flatten
+        xx, yy = xx_mesh.flatten(), yy_mesh.flatten()
+        conds_size = xx.size
+
+        print("per a parameter: ", conds_size)
+
+        # parameters
+        sT, eT = params["sT"], params["eT"]
+        tau1, b1, WE11, WE12, WI11, WI12 = params['tau1'], params['b1'], params['WE11'], params['WE12'], params['WI11'], params['WI12']
+        tau2, b2, WE21, WE22, WI21, WI22 = params['tau2'], params['b2'], params['WE21'], params['WE22'], params['WI21'], params['WI22']
+        N, M, s1, s2, gamma_X, gamma_Y, Tc, Tx, Ty = params["N"], params["M"], params["s1"], params["s2"], params["gamma_X"], params["gamma_Y"], params["Tc"], params["Tx"], params["Ty"]
+        deg = params["deg"]
+
+        # store step
+        total_step = int(eT/Tc)+1
+        index_start = int(sT/Tc)
+        store_step = (total_step - index_start) // 100 + 1 if total_step > index_start else 0
+
+
+        """ bifurcation """
+
+        # Condtions of S
+        bif_S = np.arange(0.20, 0.70, 0.005)
+        num_S = bif_S.size
+
+        Q = params["Q"]
+
+        # store hist
+        Q_hist = np.zeros((num_S, conds_size))
+        S_hist = np.zeros((num_S, conds_size))
+        max_hist = np.zeros((num_S, conds_size), dtype=np.int16)
+        min_hist = np.zeros((num_S, conds_size), dtype=np.int16)
+
+        """ run simulation """
+        bench_sT = datetime.datetime.now()
+        print("\n start: ", bench_sT)
+
+        rotated_x, rotated_y =_make_rotated_coordinate(N, deg) # (size, degree)
+
+        for idx in range(num_S):
+
+            Fin, Gin = _make_rotated_lut_numba(N, M, s1, s2, gamma_X, gamma_Y, Tc, Tx, Ty,
+                                       tau1, b1, bif_S[idx], WE11, WE12, WI11, WI12,
+                                       tau2, b2, WE21, WE22, WI21, WI22,
+                                       rotated_x,  rotated_y, deg)
+
+            x_max, x_min = self.calc_bifurcation(xx, yy, 0, 0, 0, 0,
+                                                 N, M, Tc, Tx, Ty,
+                                                 total_step, index_start, store_step, Fin, Gin)
+
+            Q_hist[idx, :] = Q
+            S_hist[idx, :] = bif_S[idx]
+            max_hist[idx, :] = x_max
+            min_hist[idx, :] = x_min
+
+            print("proccess: -*-*-*-*- ", round((idx/ num_S*100),  2), "% -*-*-*-*- ")
+
+        bench_eT = datetime.datetime.now()
+
+        print("end: ", bench_eT)
+        print("bench mark: ", bench_eT - bench_sT)
+
+
+        """ Store results as a DataFrame """
+
+        df = pd.DataFrame({
+            "Q": Q_hist.flatten(),
+            "S": S_hist.flatten(),
+            "max_val": max_hist.flatten(),
+            "min_val": min_hist.flatten()
+        })
+
+        df = df[["Q", "S", "max_val", "min_val"]]
+
+        """ Save to CSV """
+        try:
+            df.to_csv(self.filename, index=False)
+            print(f"Results saved to {self.filename}")
+        except Exception as e:
+            print(f"Error saving results to {self.filename}: {e}")
+
+
+
     @staticmethod
     @njit(parallel=True)
-    def calc_bifurcation(init_x, init_y, init_P, init_Q, init_phX, init_phY,
-                        N, M, s1, s2, gamma_X, gamma_Y, Tc, Tx, Ty,
-                        sT, eT,
-                        tau1, b1, bif_S, WE11, WE12, WI11, WI12,
-                        tau2, b2, WE21, WE22, WI21, WI22,
-                        max_values, min_values):
+    def calc_bifurcation(xx, yy, pp, qq, phxx, phyy,
+                         N, M, Tc, Tx, Ty,
+                         total_step, index_start, store_step, Fin, Gin):
 
-        for idx in prange(len(bif_S)):
+        # conditinos number (x, y)
+        total_conds = xx.size
 
-            S = bif_S[idx]
+        # return
+        x_max_hist = np.empty(total_conds, dtype=np.int16)
+        x_min_hist = np.empty(total_conds, dtype=np.int16)
 
-            Fin, Gin = _make_lut_numba(N, M, s1, s2, gamma_X, gamma_Y, Tc, Tx, Ty,
-                                        tau1, b1, S, WE11, WE12, WI11, WI12,
-                                        tau2, b2, WE21, WE22, WI21, WI22)
+        # loop
+        for idx in prange(total_conds):
 
-            _, x_hist, _ = calc_time_evolution_eca(init_x, init_y, init_P, init_Q, init_phX, init_phY,
+            _, x_hist, _ = calc_time_evolution_eca(xx[idx], yy[idx], pp, qq, phxx, phyy,
                                                     N, M, Tc, Tx, Ty,
-                                                    sT, eT, Fin, Gin)
+                                                    total_step, index_start, store_step, Fin, Gin)
 
+            # prepare max, min
+            x_max_hist[idx] = np.max(x_hist)
+            x_min_hist[idx] = np.min(x_hist)
 
-            num_vars, num_steps = x_hist.shape
-
-            x_max = np.full(num_vars, -np.inf)
-            x_min = np.full(num_vars, np.inf)
-
-            # max, min (numba does not support)
-            for i in range(num_vars):
-                for j in range(num_steps):
-                    val = x_hist[i, j]
-                    if val > x_max[i]:
-                        x_max[i] = val
-                    if val < x_min[i]:
-                        x_min[i] = val
-
-            max_values[idx, :] = x_max
-            min_values[idx, :] = x_min
-
-        return max_values, min_values
+        return x_max_hist, x_min_hist
