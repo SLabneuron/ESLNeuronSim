@@ -7,6 +7,15 @@ Updated on: 2024-11-12
 
 Contents: attracction basin
 
+Benchmark
+
+    X, Y: 64 * 64
+    P, Q:  8 *  8
+    phX, phY: 10 * 10
+
+    20 minutes
+
+
 """
 
 # import standard library
@@ -14,6 +23,8 @@ import numpy as np
 import pandas as pd
 import os
 
+import numba
+numba.set_num_threads(15) 
 from numba import njit, prange
 
 import datetime
@@ -22,7 +33,7 @@ import datetime
 
 from src.analyses.analysis_null_cline import Nullcline
 
-from src.method.eca.eca_basic import  calc_time_evolution_eca
+from src.method.eca.eca_basic import  calc_time_evolution_eca, _make_lut_numba
 
 from src.graphics.graphic_attraction_basin import PhasePlanePlotter
 
@@ -51,40 +62,49 @@ class ABECA:
         params = self.params
 
         # variables
-        x = np.arange(0, params["N"], 1)                            # 0~64
-        y = np.arange(0, params["N"], 1)
-        p = np.array([0, 2, 4, 8, 16, 32], dtype=np.int32)         # 0, 2, 4, 8, 16, 32
-        q = np.array([0, 2, 4, 8, 16, 32], dtype=np.int32)
-        phX = np.arange(0, 1.0, 0.2, dtype=np.float64)             # 0, 0.2, 0.4, 0.6, 0.8
-        phY = np.arange(0, 1.0, 0.2, dtype=np.float64)
+        x = np.arange(0, params["N"], 1, dtype=np.int16)
+        y = np.arange(0, params["N"], 1, dtype=np.int16)
+        p = np.array([0, 2, 4, 8, 16, 32, 48, 63], dtype=np.int16)
+        q = np.array([0, 2, 4, 8, 16, 32, 48, 63], dtype=np.int16)
+        phX = np.arange(0, 1.0, 0.2)
+        phY = np.arange(0, 1.0, 0.2)
 
         # meshgrid
-        xx_mesh, yy_mesh = np.meshgrid(x, y)
+        xx_mesh, yy_mesh = np.meshgrid(x, y, indexing = "ij")
         pp_mesh, qq_mesh, phxx_mesh, phyy_mesh = np.meshgrid(p, q, phX, phY)
 
         # flatten
         xx, yy = xx_mesh.flatten(), yy_mesh.flatten()
-        pp, qq = pp_mesh.flatten(), qq_mesh.flatten()
-        phxx, phyy = phxx_mesh.flatten(), phyy_mesh.flatten()
+        pp, qq, phxx, phyy = pp_mesh.flatten(), qq_mesh.flatten(), phxx_mesh.flatten(), phyy_mesh.flatten()
 
         # the number of conditions
-        val_conds = x.size * y.size                                  # state variables
-        all_conds = p.size * q.size * phX.size * phY.size           # (900): all conditions P, Q, phX, phY
+        all_conds = p.size * q.size * phX.size * phY.size
 
         # parameters
-        sT, eT = 300, 400
+        sT, eT = 300, 500
         tau1, b1, S, WE11, WE12, WI11, WI12 = params['tau1'], params['b1'], params['S'], params['WE11'], params['WE12'], params['WI11'], params['WI12']
         tau2, b2, WE21, WE22, WI21, WI22 = params['tau2'], params['b2'], params['WE21'], params['WE22'], params['WI21'], params['WI22']
         N, M, s1, s2, gamma_X, gamma_Y, Tc, Tx, Ty = params["N"], params["M"], params["s1"], params["s2"], params["gamma_X"], params["gamma_Y"], params["Tc"], params["Tx"], params["Ty"]
 
+        # store step
+        total_step = int(eT/Tc)+1
+        index_start = int(sT/Tc)
+        store_step = (total_step - index_start) // 100 + 1 if total_step > index_start else 0
+
+        # lut (vector field function)
+        Fin, Gin = _make_lut_numba(N, M, s1, s2, gamma_X, gamma_Y, Tc, Tx, Ty,
+                                    tau1, b1, S, WE11, WE12, WI11, WI12,
+                                    tau2, b2, WE21, WE22, WI21, WI22)
+
+        x_size = x.size
+        y_size = y.size
+        xy_size = x_size*y_size
+
         # for store results
-        x_max_hist = np.zeros((val_conds, all_conds))
-        x_min_hist = np.zeros((val_conds, all_conds))
-        y_max_hist = np.zeros((val_conds, all_conds))
-        y_min_hist = np.zeros((val_conds, all_conds))
-
-        print("x_max_hist: ", x_max_hist.shape)
-
+        xmax_hist = np.zeros((xy_size, all_conds))
+        xmin_hist = np.zeros((xy_size, all_conds))
+        ymax_hist = np.zeros((xy_size, all_conds))
+        ymin_hist = np.zeros((xy_size, all_conds))
 
         """ run simulation """
 
@@ -92,27 +112,19 @@ class ABECA:
         print("\n start: ", bench_sT)
         print("proccess: -*-*-*-*- ", 0, "% -*-*-*-*- ")
 
-        x_div = xx.reshape(4, -1)
-        y_div = yy.reshape(4, -1)
-
-        for iter, init_xx in enumerate(x_div):
-
-            s_iter = iter * len(init_xx)
-            e_iter = (iter + 1) * len(init_xx)
+        for idx in range(xy_size):
 
             x_max, x_min, y_max, y_min = self.calc_attraction_basin(
-                                                        x_div[iter], y_div[iter], pp, qq, phxx, phyy,
-                                                        N,  M, s1, s2, gamma_X, gamma_Y, Tc, Tx, Ty,
-                                                        sT, eT,
-                                                        tau1, b1, S, WE11, WE12, WI11, WI12,
-                                                        tau2, b2, WE21, WE22, WI21, WI22)
+                                                        xx[idx], yy[idx], pp, qq, phxx, phyy,
+                                                        N,  M, Tc, Tx, Ty,
+                                                        total_step, index_start, store_step, Fin, Gin)
 
-            x_max_hist[s_iter:e_iter, :] = x_max
-            x_min_hist[s_iter:e_iter, :] = x_min
-            y_max_hist[s_iter:e_iter, :] = y_max
-            y_min_hist[s_iter:e_iter, :] = y_min
+            xmax_hist[idx, :] = x_max
+            xmin_hist[idx, :] = x_min
+            ymax_hist[idx, :] = y_max
+            ymin_hist[idx, :] = y_min
 
-            print("proccess: -*-*-*-*- ", round(((iter + 1)/ len(x_div)*100),  2), "% -*-*-*-*- ")
+            print("proccess: -*-*-*-*- ", round((idx/ xy_size*100),  2), "% -*-*-*-*- ")
 
         bench_eT = datetime.datetime.now()
 
@@ -123,13 +135,15 @@ class ABECA:
         """ analysis and graphic heatmap """
 
         # determine state
-        result_list = self.analysis_phase_plain(x_max_hist, x_min_hist, y_max_hist, y_min_hist)
+        result_list = self.analysis_phase_plain(xmax_hist, xmin_hist, ymax_hist, ymin_hist)
 
         # get nullclines
         self.nullclines_for_graphics()
 
         # graphic of heatmap, nullclines, timewaveform
-        self.graphics_all(xx_mesh, yy_mesh, xx, yy, pp, qq, phxx, phyy, result_list)
+        self.graphics_all(xx_mesh, yy_mesh, xx, yy, pp, qq, phxx, phyy, result_list,
+                          N, M, Tc, Tx, Ty,
+                          total_step, index_start, store_step, Fin, Gin)
 
 
         """ Store results as a DataFrame """
@@ -154,75 +168,32 @@ class ABECA:
 
     @staticmethod
     @njit(parallel=True)
-    def calc_attraction_basin(init_x, init_y, init_P, init_Q, init_phX, init_phY,
-                              N,  M, s1, s2, gamma_X, gamma_Y, Tc, Tx, Ty,
-                              sT, eT,
-                              tau1, b1, S, WE11, WE12, WI11, WI12,
-                              tau2, b2, WE21, WE22, WI21, WI22
-                              ):
+    def calc_attraction_basin(init_x, init_y, pp, qq, pphX, pphY,
+                              N,  M, Tc, Tx, Ty,
+                              total_step, index_start, store_step, Fin, Gin):
 
         # conditions number (init_P, init_Q, init_phX, init_phY)
-        total_conds =init_P.size
-        num_init_vals = init_x.size
+        total_conds =pp.size
 
         # return
-        x_max_hist = np.empty((num_init_vals, total_conds), dtype=np.int32)
-        x_min_hist = np.empty((num_init_vals, total_conds), dtype=np.int32)
-        y_max_hist = np.empty((num_init_vals, total_conds), dtype=np.int32)
-        y_min_hist = np.empty((num_init_vals, total_conds), dtype=np.int32)
+        x_max_hist = np.empty(total_conds, dtype=np.int16)
+        x_min_hist = np.empty(total_conds, dtype=np.int16)
+        y_max_hist = np.empty(total_conds, dtype=np.int16)
+        y_min_hist = np.empty(total_conds, dtype=np.int16)
 
         # loop
         for idx in prange(total_conds):
 
-            # set conditions
-            P = np.full_like(init_x, init_P[idx], dtype=np.int32)
-            Q = np.full_like(init_x, init_Q[idx], dtype=np.int32)
-            phX = np.full_like(init_x, init_phX[idx], dtype=np.float64)
-            phY = np.full_like(init_x, init_phY[idx], dtype=np.float64)
-
             # Calculate
-            _, x_hist, y_hist = calc_time_evolution_eca(init_x, init_y, P, Q, phX, phY,
-                                                        N, M, s1, s2, gamma_X, gamma_Y, Tc, Tx, Ty,
-                                                        sT, eT,
-                                                        tau1, b1, S, WE11, WE12, WI11, WI12,
-                                                        tau2, b2, WE21, WE22, WI21, WI22)
-
-            """ get maximum and minimum """
-
-            # get shape
-            num_vars, num_steps = x_hist.shape
+            _, x_hist, y_hist = calc_time_evolution_eca(init_x, init_y, pp[idx], qq[idx], pphX[idx], pphY[idx],
+                                                        N, M, Tc, Tx, Ty,
+                                                        total_step, index_start, store_step, Fin, Gin)
 
             # prepare max, min
-            x_max = np.full(num_vars, -np.inf)
-            x_min = np.full(num_vars, np.inf)
-            y_max = np.full(num_vars, -np.inf)
-            y_min = np.full(num_vars, np.inf)
-
-            # max, min (numba does not support)
-            for i in range(num_vars):
-                for j in range(num_steps):
-
-                    # x
-                    x_val = x_hist[i, j]
-                    if x_val > x_max[i]:
-                        x_max[i] = x_val
-
-                    if x_val < x_min[i]:
-                        x_min[i] = x_val
-
-                    # y
-                    y_val = y_hist[i, j]
-                    if y_val > y_max[i]:
-                        y_max[i] = y_val
-
-                    if y_val < y_min[i]:
-                        y_min[i] = y_val
-
-            # store results (per xy, every conditions of P, Q, phX, phY)
-            x_max_hist[:, idx] = x_max
-            x_min_hist[:, idx] = x_min
-            y_max_hist[:, idx] = y_max
-            y_min_hist[:, idx] = y_min
+            x_max_hist[idx] = np.max(x_hist)
+            x_min_hist[idx] = np.min(x_hist)
+            y_max_hist[idx] = np.max(y_hist)
+            y_min_hist[idx] = np.min(y_hist)
 
         return x_max_hist, x_min_hist, y_max_hist, y_min_hist
 
@@ -319,7 +290,9 @@ class ABECA:
         self.y1_null, self.y2_null = inst.nullcline_fy_x, inst.nullcline_fy_y
 
 
-    def graphics_all(self, xx_mesh, yy_mesh, init_xx, init_yy, pp, qq, phxx, phyy, state):
+    def graphics_all(self, xx_mesh, yy_mesh, init_xx, init_yy, pp, qq, phxx, phyy, state,
+                     N, M, Tc, Tx, Ty,
+                     total_step, index_start, store_step, Fin, Gin):
 
         state = np.array(state)
 
@@ -332,77 +305,65 @@ class ABECA:
         # only an equilibrium
         if (self.equ_1_idx != None) and (self.equ_2_idx == None):
 
-            x = np.array(init_xx[self.equ_1_idx[0]])
-            y = np.array(init_yy[self.equ_1_idx[0]])
+            x = init_xx[self.equ_1_idx[0]]
+            y = init_yy[self.equ_1_idx[0]]
 
-            P = np.full_like(x, pp[self.equ_1_idx[1]], dtype=np.int32)
-            Q = np.full_like(x, qq[self.equ_1_idx[1]], dtype=np.int32)
-            phX = np.full_like(x, phxx[self.equ_1_idx[1]], dtype=np.float64)
-            phY = np.full_like(x, phyy[self.equ_1_idx[1]], dtype=np.float64)
+            P = pp[self.equ_1_idx[1]]
+            Q = qq[self.equ_1_idx[1]]
+            phX = phxx[self.equ_1_idx[1]]
+            phY = phyy[self.equ_1_idx[1]]
 
             _, x_hist, y_hist = calc_time_evolution_eca(x, y, P, Q, phX, phY,
-                                                        self.params["N"], self.params["M"], self.params["s1"], self.params["s2"], self.params["gamma_X"], self.params["gamma_Y"], self.params["Tc"], self.params["Tx"], self.params["Ty"],
-                                                        self.params["sT"], self.params["eT"],
-                                                        self.params["tau1"], self.params["b1"], self.params["S"], self.params["WE11"], self.params["WE12"], self.params["WI11"], self.params["WI12"],
-                                                        self.params["tau2"], self.params["b2"], self.params["WE21"], self.params["WE22"], self.params["WI21"], self.params["WI22"]
-                                                        )
+                                                        N, M, Tc, Tx, Ty,
+                                                        total_step, index_start, store_step, Fin, Gin)
 
             inst.add_result(x_hist, y_hist, c="red", l="equ")
 
         # two equilibria
         elif (self.equ_1_idx != None) and (self.equ_2_idx != None):
 
-            x = np.array(init_xx[self.equ_1_idx[0]])
-            y = np.array(init_yy[self.equ_1_idx[0]])
+            x = init_xx[self.equ_1_idx[0]]
+            y = init_yy[self.equ_1_idx[0]]
 
-            P = np.full_like(x, pp[self.equ_1_idx[1]], dtype=np.int32)
-            Q = np.full_like(x, qq[self.equ_1_idx[1]], dtype=np.int32)
-            phX = np.full_like(x, phxx[self.equ_1_idx[1]], dtype=np.float64)
-            phY = np.full_like(x, phyy[self.equ_1_idx[1]], dtype=np.float64)
+            P = pp[self.equ_1_idx[1]]
+            Q = qq[self.equ_1_idx[1]]
+            phX = phxx[self.equ_1_idx[1]]
+            phY = phyy[self.equ_1_idx[1]]
 
             _, x_hist, y_hist = calc_time_evolution_eca(x, y, P, Q, phX, phY,
-                                                        self.params["N"], self.params["M"], self.params["s1"], self.params["s2"], self.params["gamma_X"], self.params["gamma_Y"], self.params["Tc"], self.params["Tx"], self.params["Ty"],
-                                                        self.params["sT"], self.params["eT"], 
-                                                        self.params["tau1"], self.params["b1"], self.params["S"], self.params["WE11"], self.params["WE12"], self.params["WI11"], self.params["WI12"],
-                                                        self.params["tau2"], self.params["b2"], self.params["WE21"], self.params["WE22"], self.params["WI21"], self.params["WI22"]
-                                                        )
+                                                        N, M, Tc, Tx, Ty,
+                                                        total_step, index_start, store_step, Fin, Gin)
 
             inst.add_result(x_hist, y_hist, c="red", l="equ 1")
 
-            x = np.array(init_xx[self.equ_2_idx[0]])
-            y = np.array(init_yy[self.equ_2_idx[0]])
+            x = init_xx[self.equ_2_idx[0]]
+            y = init_yy[self.equ_2_idx[0]]
 
-            P = np.full_like(x, pp[self.equ_2_idx[1]], dtype=np.int32)
-            Q = np.full_like(x, qq[self.equ_2_idx[1]], dtype=np.int32)
-            phX = np.full_like(x, phxx[self.equ_2_idx[1]], dtype=np.float64)
-            phY = np.full_like(x, phyy[self.equ_2_idx[1]], dtype=np.float64)
+            P = pp[self.equ_2_idx[1]]
+            Q = qq[self.equ_2_idx[1]]
+            phX = phxx[self.equ_2_idx[1]]
+            phY = phyy[self.equ_2_idx[1]]
 
             _, x_hist, y_hist = calc_time_evolution_eca(x, y, P, Q, phX, phY,
-                                                        self.params["N"], self.params["M"], self.params["s1"], self.params["s2"], self.params["gamma_X"], self.params["gamma_Y"], self.params["Tc"], self.params["Tx"], self.params["Ty"],
-                                                        self.params["sT"], self.params["eT"],
-                                                        self.params["tau1"], self.params["b1"], self.params["S"], self.params["WE11"], self.params["WE12"], self.params["WI11"], self.params["WI12"],
-                                                        self.params["tau2"], self.params["b2"], self.params["WE21"], self.params["WE22"], self.params["WI21"], self.params["WI22"]
-                                                        )
+                                                        N, M, Tc, Tx, Ty,
+                                                        total_step, index_start, store_step, Fin, Gin)
 
             inst.add_result(x_hist, y_hist, c="blue", l="equ 2")
 
         # po
         if self.po_idx != None:
 
-            x = np.array(init_xx[self.po_idx[0]])
-            y = np.array(init_yy[self.po_idx[0]])
+            x = init_xx[self.po_idx[0]]
+            y = init_yy[self.po_idx[0]]
 
-            P = np.full_like(x, pp[self.po_idx[1]], dtype=np.int32)
-            Q = np.full_like(x, qq[self.po_idx[1]], dtype=np.int32)
-            phX = np.full_like(x, phxx[self.po_idx[1]], dtype=np.float64)
-            phY = np.full_like(x, phyy[self.po_idx[1]], dtype=np.float64)
+            P = pp[self.po_idx[1]]
+            Q = qq[self.po_idx[1]]
+            phX = phxx[self.po_idx[1]]
+            phY = phyy[self.po_idx[1]]
 
             _, x_hist, y_hist = calc_time_evolution_eca(x, y, P, Q, phX, phY,
-                                                        self.params["N"], self.params["M"], self.params["s1"], self.params["s2"], self.params["gamma_X"], self.params["gamma_Y"], self.params["Tc"], self.params["Tx"], self.params["Ty"],
-                                                        self.params["sT"], self.params["eT"],
-                                                        self.params["tau1"], self.params["b1"], self.params["S"], self.params["WE11"], self.params["WE12"], self.params["WI11"], self.params["WI12"],
-                                                        self.params["tau2"], self.params["b2"], self.params["WE21"], self.params["WE22"], self.params["WI21"], self.params["WI22"]
-                                                        )
+                                                        N, M, Tc, Tx, Ty,
+                                                        total_step, index_start, store_step, Fin, Gin)
 
             inst.add_result(x_hist, y_hist, c="gray", l="periodic orbit")
 

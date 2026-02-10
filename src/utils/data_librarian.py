@@ -190,7 +190,7 @@ class DataLibrarian:
         now_S = self.params["S"]
         now_str = datetime.datetime.now().strftime('%Y%m%d%H%M%S')
 
-        if self.sim_jname == "time evolution":
+        if self.sim_jname == "time evolution" or "lut":
             csv_filename = f'{now_str}.csv'
         elif self.sim_jname == "bifurcation":
             csv_filename = f'bif_Q_{now_Q}_xaxisS_{now_S}_time_{now_str}.csv'

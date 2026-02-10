@@ -68,9 +68,6 @@ class WindowSetup:
 
         self.event_bindings()
 
-        # calculate and plot initial conditions
-        #self.time_evol.update_graphics()
-
 
     def event_bindings(self):
 
@@ -85,8 +82,6 @@ class WindowSetup:
 
             # Plot: Results time evolution
             self.run_simulation
-
-
 
         self.combos["model"].bind("<<ComboboxSelected>>", lambda e: update(), add="+")
         self.combos["param set"].bind("<<ComboboxSelected>>", lambda e: update(), add="+")
@@ -139,23 +134,17 @@ class WindowSetup:
 
     def run_simulation(self):
 
-        # update values
+        # 1. Update values
         self.parameter_update()
-        
-        #print(self.params)
-        
-        # file directory
+
+        # 2. File directory
         data_lib = DataLibrarian(self.params)
         self.file_name = data_lib.save_path
 
-        """ Execute Simulation """
-
-        # Run simulation
+        # 3. Run simulation
         MethodSelects(self)
 
-        # Plot: Results time evolution
+        # 4. Plot
         self.time_evol.update_graphics()
-        
-        print("Complete Simulation", datetime.datetime.now())
-        
-        print("\n\n")
+
+        print("Complete Simulation", datetime.datetime.now(), "\n\n")

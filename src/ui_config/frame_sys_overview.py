@@ -64,7 +64,7 @@ class SysOverview:
 
         # column and row configure
         frame.columnconfigure(0, minsize=220)
-        frame.columnconfigure(1, minsize=440)
+        frame.columnconfigure(1, minsize=420)
         frame.rowconfigure(1, minsize=220)
 
         """ Set Overview """
@@ -135,25 +135,17 @@ class SysOverview:
 
     def phase_plain(self, frame):
 
-        """
-        Summary:
-            Create graphic space of vector field information
-
-        return:
-            self.master.axes["vfi"]
-
-        """
+        """ Set Nullcline canvas """
 
         # Label
-        title = ttk.Label(frame, text="Phase Plane", style="Custom1.TLabel")
-        title.grid(row=0, column=0, padx=2, pady=2, sticky="nw")
+        ttk.Label(frame, text="Phase Plane", style="Custom1.TLabel").grid(row=0, column=0, padx=2, pady=2, sticky="nw")
 
         # Frame
         fr = ttk.Frame(frame, style="Custom2.TFrame")
         fr.grid(row=1, column=0, padx=2, pady=2)
 
         # Graph Space
-        fig = Figure(figsize=(2.2, 2.1), facecolor="lightgray", tight_layout=True)
+        fig = Figure(figsize=(3.0, 3.0), facecolor="white", tight_layout=True)
 
         # Add plot of phase_portrait
         ax = fig.add_subplot()
@@ -172,6 +164,7 @@ class SysOverview:
 
         # Calculate nullcline
         self.master.parameter_update()
+
         inst = Nullcline(self.master.params)
 
         # Set nullcline
@@ -191,18 +184,18 @@ class SysOverview:
         """ Graphic """
 
         # Get mode
-        axes = self.master.axes["vfi"]
+        model = self.master.combos["model"].get()
+        params = self.master.params
+        ax = self.master.axes["vfi"]
 
-        # Set Graph Space
-        PP = GraphicPP(self.master, axes)
+        # Init frames of phase portrait
+        PP = GraphicPP(params, model, ax)
 
-        # Plot nullclines
-        PP.plot_nullcline(x2_null, x1_null, y2_null, y1_null)
-
-        # Plot nodes (sink, source, saddle)
-        PP.plot_nodes(self.eset_x, self.eset_y, self.results.classifications)
+        # Plot nullclines and node(# Plot nodes (sink, source, saddle))
+        PP.plot_nullcline(model, params, x2_null, x1_null, y2_null, y1_null)
+        PP.plot_nodes(model, params, self.eset_x, self.eset_y, self.results.classifications)
 
         # Graphics
-        axes.figure.canvas.draw()
+        ax.figure.canvas.draw()
 
 

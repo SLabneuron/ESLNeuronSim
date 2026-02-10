@@ -70,15 +70,15 @@ class FrControl:
 
             selected_value = combo0.get()
 
-            if selected_value in ["fem"]:
+            if selected_value in ["forward euler"]:
                 self.toggle_widgets("fr_ni")
             else:
                 self.toggle_widgets("fr_ca")
 
-        combo0_value = ["fem", "SynCA", "ErCA"]
+        combo0_value = ["forward euler", "ergodic CA", "synchronuus CA", "rotated-LUT CA"]
         combo0 = ttk.Combobox(fr, values=combo0_value, width=15)
         combo0.grid(row=0, column=1, padx=2, pady=2)
-        combo0.set("ErCA")  # Default value
+        combo0.set("ergodic CA")  # Default value
         combo0.bind("<<ComboboxSelected>>", on_combobox_select)
         self.master.combos["model"] = combo0
 
@@ -88,18 +88,26 @@ class FrControl:
         text1 = ttk.Label(fr, text="Simulation:", style="Custom1.TLabel")
         text1.grid(row=1, column=0, padx=2, pady=2, sticky=tk.W)
 
-        combo1_value = ["time evolution", "bifurcation", "parameter region", "attraction basin", "ReturnMap"]
+        combo1_value = ["time evolution",
+                        "bifurcation",
+                        "parameter region",
+                        "attraction basin",
+                        "ReturnMap",
+                        "TxTysweep",
+                        "TxTheta_sweep",
+                        "TyTheta_sweep",
+                        "Output LUT"]
         combo1 = ttk.Combobox(fr, values=combo1_value, width=15)
         combo1.grid(row=1, column=1, padx=2, pady=2)
         combo1.set("time evolution")  # Default value
         self.master.combos["simulation"] = combo1
 
         # execute button
-        text2 = ttk.Label(fr, text="Execute: ", style="Custom1.TLabel")
-        text2.grid(row=2, column=0, padx=2, pady=2, sticky=tk.W)
+        #text2 = ttk.Label(fr, text="Run", style="Custom1.TLabel")
+        #text2.grid(row=0, column=2, padx=2, pady=2)
 
-        button1 = ttk.Button(fr, text="Start", command=self.master.run_simulation)
-        button1.grid(row=2, column=1, padx=2, pady=2)
+        button1 = ttk.Button(fr, text="▶", command=self.master.run_simulation)
+        button1.grid(row=0, column=2, rowspan=2, padx=8, pady=2)
 
 
     def toggle_widgets(self, show):

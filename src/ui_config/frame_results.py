@@ -73,27 +73,11 @@ class TimeEvol:
         frame = ttk.Frame(fr, style="Custom1.TFrame")
         frame.grid(row=1, column=0, padx=2, pady=2, sticky = "nw")
 
-        self.sets_results_frame(frame)
-
-
-    def sets_results_frame(self, frame):
-
-        """
-        Summary:
-            Create graphic space of phase portraits
-
-        Contents:
-            Time waveforms
-            Phase portrait
-            Internal phase of sw
-
-        """
-
+        # set frame for TW
         self.create_time_waveforms(frame)
 
+        # set frame for PP
         self.create_phase_portrait(frame)
-
-
 
 
     def create_time_waveforms(self, frame):
@@ -134,18 +118,10 @@ class TimeEvol:
 
     def create_phase_portrait(self, frame):
 
-        """
-        Summary:
-            Create graphic space of phase portraits
-
-        return:
-            self.master.axes["phase_portrait"]
-
-        """
+        """ Set PP results canvas """
 
         # Label
-        title = ttk.Label(frame, text = "Phase Portrait", style="Custom1.TLabel")
-        title.grid(row=0, column=1, padx=2, pady=2)
+        title = ttk.Label(frame, text = "Phase Portrait", style="Custom1.TLabel").grid(row=0, column=1, padx=2, pady=2)
 
         # Frame
         fr = ttk.Frame(frame, style="Graphic.TFrame")
@@ -155,30 +131,29 @@ class TimeEvol:
         fig = Figure(figsize=(3, 3), facecolor="white", tight_layout=True)
 
         # Add plot of phase_portrait
-        phase_portrait = fig.add_subplot()
+        ax= fig.add_subplot()
 
         # Canvas
         canvas = FigureCanvasTkAgg(fig, master=fr)
         canvas.get_tk_widget().grid(row=0, column=0)
 
         # Store phase portrait
-        self.master.axes["phase_portrait"] = phase_portrait
+        self.master.axes["phase_portrait"] = ax
 
-
-  
 
     def update_graphics(self):
 
-        """
-        Summary:
-            Plot results
-
-        """
-
-        # axes
+        """ graphic TW and PP """
+        # get master level
+        model = self.master.combos["model"].get()
+        params = self.master.params
         ax_TW1 = self.master.axes["waveform1"]
         ax_TW2 = self.master.axes["waveform2"]
         ax_pp = self.master.axes["phase_portrait"]
+
+        # Init frames of time waveforms and phase portrait
+        TW = GraphicTW(params, model, ax_TW1, ax_TW2)
+        PP = GraphicPP(params, model, ax_pp)
 
         # results
         if self.master.results != None:
@@ -186,18 +161,9 @@ class TimeEvol:
             X = self.master.results.x_hist
             Y = self.master.results.y_hist
 
-        # Time Waveforms
-        TW = GraphicTW(self.master)
-
-        # Plot time waveforms
-        if self.master.results != None: TW.plot(T, X, Y)
-
-        # Phase Portrait
-        PP = GraphicPP(self.master, ax_pp)
-
-        # Plot phase portrait
-        if self.master.results != None: PP.plot_result(X, Y)
-
+            # Plot results
+            TW.plot(T, X, Y)
+            PP.plot(X, Y)
 
         # Graphics
         ax_TW1.figure.canvas.draw()

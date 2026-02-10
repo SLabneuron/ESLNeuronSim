@@ -95,9 +95,10 @@
         "gamma_Y": 1.024,
         "Tc": 0.01,
         "Tx_rat": 0.055,
-        "Tx_sqrt": 1.713,
+        "Tx_sqrt": 2,
         "Ty_rat": 0.044,
-        "Ty_sqrt": 2.313
+        "Ty_sqrt": 3,
+        "deg": 1
     },
 
     "NI set":{

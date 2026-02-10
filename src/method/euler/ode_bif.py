@@ -14,9 +14,11 @@ import numpy as np
 import pandas as pd
 import os
 
+import numba
+numba.set_num_threads(15)
 from numba import njit, prange
 
-import datetime
+import datetime, time
 
 # import my library
 from src.method.euler.ode_basic import calc_time_evolution_ode
@@ -38,71 +40,74 @@ class BifODE:
 
     def run(self):
 
-        """ Conditions """
+        """ Initialization """
 
         # get params
         params = self.params
 
         # variables
-        self.x = np.arange(0, 0.81, 0.02)
-        self.y = np.arange(0, 0.81, 0.02)
+        x = np.arange(0, 0.80, 0.05)
+        y = np.arange(0, 0.80, 0.05)
 
-        init_x, init_y = np.meshgrid(self.x, self.y)
+        xx_mesh, yy_mesh = np.meshgrid(x, y)
+        xx, yy = xx_mesh.flatten(), yy_mesh.flatten()
+        conds_size = xx.size
 
-        init_x = init_x.flatten()
-        init_y = init_y.flatten()
-
-        num_init_conds = init_x.size
-
-        # bifurcation parameter
-
-        bif_S = np.arange(0, 0.81, 0.01)
-        num_S = len(bif_S)
-
-        """ parameters """
-
-        # time
-        sT, eT, h = 1000, 1300, params["h"]
-
-        # params (fx)
+        # parameter
+        sT, eT, h = 500, 700, params["h"]
         tau1, b1, WE11, WE12, WI11, WI12 = params['tau1'], params['b1'], params['WE11'], params['WE12'], params['WI11'], params['WI12']
-
-        # params (fy)
         tau2, b2, WE21, WE22, WI21, WI22 = params['tau2'], params['b2'], params['WE21'], params['WE22'], params['WI21'], params['WI22']
 
+        # store step
+        total_step = int(eT/h)+1
+        index_start = int(sT/h)
+        store_step = (total_step - index_start) // 100 + 1 if total_step > index_start else 0
+
+        """ bifurcation """
+
+        # Conditions of S
+        bif_S = np.arange(0.20, 0.70, 0.005)
+        num_S = len(bif_S)
+        
+        Q = params["Q"]
+
         # store hist
-        max_values = np.zeros((num_S, num_init_conds))
-        min_values = np.zeros((num_S, num_init_conds))
+        Q_hist = np.zeros((num_S, conds_size))
+        S_hist = np.zeros((num_S, conds_size))
+        max_hist = np.zeros((num_S, conds_size))
+        min_hist = np.zeros((num_S, conds_size))
 
         """ run simulation """
         bench_sT = datetime.datetime.now()
         print("\n start: ", bench_sT)
 
-        max_values, min_values = self.calc_bifurcation(init_x, init_y,
-                                                        sT, eT, h,
-                                                        tau1, b1, bif_S, WE11, WE12, WI11, WI12,
-                                                        tau2, b2, WE21, WE22, WI21, WI22,
-                                                        max_values, min_values)
+        for idx in range(num_S):
+
+            x_max, x_min = self.calc_bifurcation(xx, yy, h,
+                                                 tau1, b1, bif_S[idx], WE11, WE12, WI11, WI12,
+                                                 tau2, b2, WE21, WE22, WI21, WI22,
+                                                 total_step, index_start, store_step)
+
+            Q_hist[idx, :] = Q
+            S_hist[idx, :] = bif_S[idx]
+            max_hist[idx, :] = x_max
+            min_hist[idx, :] = x_min
+
+            print("proccess: -*-*-*-*- ", round((idx/ num_S*100),  2), "% -*-*-*-*- ")
 
         bench_eT = datetime.datetime.now()
-        print("end: ", bench_eT)
 
+        print("end: ", bench_eT)
         print("bench mark: ", bench_eT - bench_sT)
 
 
         """ Store results as a DataFrame """
 
-        print("\\init_x: ", init_x.shape)
-        print("\\max_val: ", max_values.shape)
-
-        num_points = len(self.x)
         df = pd.DataFrame({
-            "Q": self.params["Q"],
-            "S": np.repeat(bif_S, num_points ** 2),  # Repeat S for each grid point
-            "x": np.tile(init_x, num_S),
-            "y": np.tile(init_y, num_S),
-            "max_val": max_values.flatten(),
-            "min_val": min_values.flatten()
+            "Q": Q_hist.flatten(),
+            "S": S_hist.flatten(),
+            "max_val": max_hist.flatten(),
+            "min_val": min_hist.flatten()
         })
 
         """ Save to CSV """
@@ -116,37 +121,27 @@ class BifODE:
 
     @staticmethod
     @njit(parallel=True)
-    def calc_bifurcation(init_x, init_y,
-                         sT, eT, h,
-                         tau1, b1, bif_S, WE11, WE12, WI11, WI12,
+    def calc_bifurcation(xx, yy, h,
+                         tau1, b1, S, WE11, WE12, WI11, WI12,
                          tau2, b2, WE21, WE22, WI21, WI22,
-                         max_values, min_values):
+                         total_step, index_start, store_step):
 
-        for idx in prange(len(bif_S)):
+        # conditions number (x, y)
+        total_conds = xx.size
 
-            S = bif_S[idx]
+        # return
+        x_max_hist = np.empty(total_conds, dtype=np.float32)
+        x_min_hist = np.empty(total_conds, dtype=np.float32)
 
-            _, x_hist, _ = calc_time_evolution_ode(init_x, init_y,
-                                                sT, eT, h,
-                                                tau1, b1, S, WE11, WE12, WI11, WI12,
-                                                tau2, b2, WE21, WE22, WI21, WI22)
+        for idx in prange(total_conds):
 
-            num_vars, num_steps  = x_hist.shape           # transpose
+            _, x_hist, _ = calc_time_evolution_ode(xx[idx], yy[idx], h,
+                                                   tau1, b1, S, WE11, WE12, WI11, WI12,
+                                                   tau2, b2, WE21, WE22, WI21, WI22,
+                                                   total_step, index_start, store_step)
 
-            x_max = np.full(num_vars, -np.inf)
-            x_min = np.full(num_vars, np.inf)
+            # store return hist
+            x_max_hist[idx] = np.max(x_hist)
+            x_min_hist[idx] = np.min(x_hist)
 
-            # max, min (numba does not support)
-            for i in prange(num_vars):
-                for j in range(num_steps):
-                    val = x_hist[i, j]
-                    if val > x_max[i]:
-                        x_max[i] = val
-                    if val < x_min[i]:
-                        x_min[i] = val
-
-            # per S, max and min of all conditions (x, y)
-            max_values[idx, :] = x_max
-            min_values[idx, :] = x_min
-
-        return max_values, min_values
+        return x_max_hist, x_min_hist

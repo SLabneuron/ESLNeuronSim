@@ -168,7 +168,7 @@ class FrParamConfig:
 
         atrs1 = [("N: 2 **", "Ns"), ("M: 2 **", "Ms"),
                 ("s1: 2 **", "s1_s"), ("s2: 2 **", "s2_s"),
-                ("γ_X:", "gamma_X"), ("γ_Y:", "gamma_Y"),
+                ("deg:", "deg"),
                 ("Tc:", "Tc"),
                 ("Tx:", "Tx_rat"), ("Ty:", "Ty_rat")]
 
@@ -199,7 +199,7 @@ class FrParamConfig:
 
         """ Set widgets: CA parameters columns = [2, 3] """
 
-        atrs2 = [(0, "Ns"), (1, "Ms"), (2, "s1_s"), (3, "s2_s"), (7, "Tx_sqrt"), (8, "Ty_sqrt")]
+        atrs2 = [(0, "Ns"), (1, "Ms"), (2, "s1_s"), (3, "s2_s"), (6, "Tx_sqrt"), (7, "Ty_sqrt")]
 
         self.master.power_labels = {}
 
@@ -213,7 +213,7 @@ class FrParamConfig:
                 txt.grid(row=n[0], column=2, columnspan=2, padx=4, pady=2, sticky=tk.W)
                 self.master.power_labels[n[1]] = txt
 
-            elif n[0] in [7, 8]:
+            elif n[0] in [6, 7]:
 
                 txt = ttk.Label(fr, text= "*√", style="Custom1.TLabel")
                 txt.grid(row=n[0], column=2, padx=4, pady=2, sticky=tk.E)

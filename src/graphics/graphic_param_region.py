@@ -68,6 +68,8 @@ def graphic_pr(path):
         ],
         zmin=1,
         zmax=5,
+        xgap=1,
+        ygap=1,
         colorbar=dict(
             title="State",
             tickvals=[1, 2, 3, 4, 5],
@@ -109,32 +111,63 @@ def graphic_pr(path):
 
 
 
+def match_rate(csv_a: str, csv_b: str) -> None:
+    a = pd.read_csv(csv_a, usecols=["Q","S","state"])
+    b = pd.read_csv(csv_b, usecols=["Q","S","state"])
+
+    # float揺れ対策（必要なら桁数は調整）
+    a["Q"] = a["Q"].round(6); a["S"] = a["S"].round(6)
+    b["Q"] = b["Q"].round(6); b["S"] = b["S"].round(6)
+
+    m = a.merge(b, on=["Q","S"], how="inner", suffixes=("_a","_b"))
+    rate = (m["state_a"].to_numpy() == m["state_b"].to_numpy()).mean() if len(m) else float("nan")
+
+    print(f"matched rows (by Q,S): {len(m)}")
+    print(f"only in A: {len(a) - len(m)}   only in B: {len(b) - len(m)}")
+    print(f"state match rate: {rate*100:.6f}")
+
+
+def match_rate_get_df(csv_a: str, df: pd.DataFrame) -> None:
+    a = pd.read_csv(csv_a, usecols=["Q","S","state"])
+    b = df[["Q", "S", "state"]].copy()
+
+    # float揺れ対策（必要なら桁数は調整）
+    a["Q"] = a["Q"].round(6); a["S"] = a["S"].round(6)
+    b["Q"] = b["Q"].round(6); b["S"] = b["S"].round(6)
+
+    m = a.merge(b, on=["Q","S"], how="inner", suffixes=("_a","_b"))
+    rate = (m["state_a"].to_numpy() == m["state_b"].to_numpy()).mean() if len(m) else float("nan")
+
+    return rate
+
 if __name__ == "__main__":
 
-    """ ode: parameter region """
+    # set 1 (ode)
+    ode_set1 = r"c:\Storage\02_paper\04_2025_Nolta journal\04_Python\data\results\set 1\forward euler\results\parameter region\20260108095815.csv"      # t = [400, 700]
+    ode_set1_2 = r"c:\Storage\02_paper\04_2025_Nolta journal\04_Python\data\results\set 1\forward euler\results\parameter region\20260112155128.csv"    # t = [1000, 1500]
 
-    # set 1
-    # filepath = r"c:\Storage\02_paper\03_2025_TEEE\04_Python\data\results\set 1\fem\results\parameter region\parameter_region_time_20241223103022.csv"
+    # set 2 (ode)
+    ode_set2 = r"c:\Storage\02_paper\04_2025_Nolta journal\04_Python\data\results\set 2\forward euler\results\parameter region\20260108101541.csv"
+    ode_set2_2 = r"c:\Storage\02_paper\04_2025_Nolta journal\04_Python\data\results\set 2\forward euler\results\parameter region\20260112160036.csv"
 
-    # set 2
-    # filepath = r"c:\Storage\02_paper\03_2025_TEEE\04_Python\data\results\set 2\fem\results\parameter region\parameter_region_time_20241223105451.csv"
+    # set 1 (rotated ECA)
+    rotated_eca_set1 = r"c:\Storage\02_paper\04_2025_Nolta journal\04_Python\data\results\set 1\rotated-LUT CA\results\parameter region\20260112164116.csv"
 
-    """ eca: parameter region """
+    # set 2 (rotated ECA)
+    rotated_eca_set2 = r"c:\Storage\02_paper\04_2025_Nolta journal\04_Python\data\results\set 2\rotated-LUT CA\results\parameter region\20260112163022.csv"
 
-    # set 1
-    # filepath = r"c:\Storage\02_paper\03_2025_TEEE\04_Python\data\results\set 1\ErCA\condition_16\parameter region\parameter_region_time_20241225172601.csv"
-    
-    # set 2
-    # filepath = r"c:\Storage\02_paper\03_2025_TEEE\04_Python\data\results\set 2\ErCA\condition_16\parameter region\parameter_region_time_20241225164159.csv"
-    
-    """ rca: parameter region """
-    
-    # set 1
-    #filepath = r"c:\Storage\02_paper\03_2025_TEEE\04_Python\data\results\set 1\ErCA\condition_17\parameter region\parameter_region_time_20241226143134.csv"
-    
-    # set 2
-    filepath = r"c:\Storage\02_paper\03_2025_TEEE\04_Python\data\results\set 2\ErCA\condition_17\parameter region\parameter_region_time_20241226152418.csv"
-    
+    # set 1 (normal ECA)
+    normal_eca_set1 = r"c:\Storage\02_paper\04_2025_Nolta journal\04_Python\data\results\set 1\ergodic CA\results\parameter region\20260112162234.csv"
+
+    # set 2 (normal ECA)
+    normal_eca_set2 =r"c:\Storage\02_paper\04_2025_Nolta journal\04_Python\data\results\set 2\ergodic CA\results\parameter region\20260112162559.csv"
+
+    filepath = rotated_eca_set2
+
     graphic_pr(filepath)
 
-    #graphic_pr(filepath)
+
+    #match_rate(ode_set1, rotated_eca_set1)     # 96.72 %
+    match_rate(ode_set1_2, normal_eca_set1)     # 95.39 %   X*Y = 16*16 （間引き⇒１分）
+    #match_rate(ode_set2, rotated_eca_set2)     # 92.52 %
+    #match_rate(ode_set2, normal_eca_set2)      # 92.02 %
