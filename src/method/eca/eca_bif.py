@@ -76,7 +76,7 @@ class BifECA:
         sT, eT = params["sT"], params["eT"]
         tau1, b1, WE11, WE12, WI11, WI12 = params['tau1'], params['b1'], params['WE11'], params['WE12'], params['WI11'], params['WI12']
         tau2, b2, WE21, WE22, WI21, WI22 = params['tau2'], params['b2'], params['WE21'], params['WE22'], params['WI21'], params['WI22']
-        N, M, s1, s2, gamma_X, gamma_Y, Tc, Tx, Ty = params["N"], params["M"], params["s1"], params["s2"], params["gamma_X"], params["gamma_Y"], params["Tc"], params["Tx"], params["Ty"]
+        N, M, s1, s2, Tc, Tx, Wx, Ty, Wy = params["N"], params["M"], params["s1"], params["s2"], params["Tc"], params["Tx"], params["Wx"], params["Ty"], params["Wy"]
 
         # store step
         total_step = int(eT/Tc)+1
@@ -104,12 +104,12 @@ class BifECA:
 
         for idx in range(num_S):
 
-            Fin, Gin = _make_lut_numba(N, M, s1, s2, gamma_X, gamma_Y, Tc, Tx, Ty,
+            Fin, Gin = _make_lut_numba(N, M, s1, s2, Tx, Wx, Ty, Wy,
                                        tau1, b1, bif_S[idx], WE11, WE12, WI11, WI12,
                                        tau2, b2, WE21, WE22, WI21, WI22)
 
             x_max, x_min = self.calc_bifurcation(xx, yy, 0, 0, 0, 0,
-                                                 N, M, Tc, Tx, Ty,
+                                                 N, M, Tc, Tx, Wx, Ty, Wy,
                                                  total_step, index_start, store_step, Fin, Gin)
 
             Q_hist[idx, :] = Q
@@ -169,7 +169,7 @@ class BifECA:
         sT, eT = params["sT"], params["eT"]
         tau1, b1, WE11, WE12, WI11, WI12 = params['tau1'], params['b1'], params['WE11'], params['WE12'], params['WI11'], params['WI12']
         tau2, b2, WE21, WE22, WI21, WI22 = params['tau2'], params['b2'], params['WE21'], params['WE22'], params['WI21'], params['WI22']
-        N, M, s1, s2, gamma_X, gamma_Y, Tc, Tx, Ty = params["N"], params["M"], params["s1"], params["s2"], params["gamma_X"], params["gamma_Y"], params["Tc"], params["Tx"], params["Ty"]
+        N, M, s1, s2, Tc, Tx, Wx, Ty, Wy = params["N"], params["M"], params["s1"], params["s2"], params["Tc"], params["Tx"], params["Wx"],params["Ty"], params["Wy"]
         deg = params["deg"]
 
         # store step
@@ -200,13 +200,13 @@ class BifECA:
 
         for idx in range(num_S):
 
-            Fin, Gin = _make_rotated_lut_numba(N, M, s1, s2, gamma_X, gamma_Y, Tc, Tx, Ty,
+            Fin, Gin = _make_rotated_lut_numba(N, M, s1, s2, Tx, Wx, Ty, Wy,
                                        tau1, b1, bif_S[idx], WE11, WE12, WI11, WI12,
                                        tau2, b2, WE21, WE22, WI21, WI22,
                                        rotated_x,  rotated_y, deg)
 
             x_max, x_min = self.calc_bifurcation(xx, yy, 0, 0, 0, 0,
-                                                 N, M, Tc, Tx, Ty,
+                                                 N, M, Tc, Tx, Wx, Ty,Wy,
                                                  total_step, index_start, store_step, Fin, Gin)
 
             Q_hist[idx, :] = Q
@@ -245,7 +245,7 @@ class BifECA:
     @staticmethod
     @njit(parallel=True)
     def calc_bifurcation(xx, yy, pp, qq, phxx, phyy,
-                         N, M, Tc, Tx, Ty,
+                         N, M, Tc, Tx, Wx, Ty, Wy,
                          total_step, index_start, store_step, Fin, Gin):
 
         # conditinos number (x, y)
@@ -259,7 +259,7 @@ class BifECA:
         for idx in prange(total_conds):
 
             _, x_hist, _ = calc_time_evolution_eca(xx[idx], yy[idx], pp, qq, phxx, phyy,
-                                                    N, M, Tc, Tx, Ty,
+                                                    N, M, Tc, Tx, Wx, Ty, Wy,
                                                     total_step, index_start, store_step, Fin, Gin)
 
             # prepare max, min

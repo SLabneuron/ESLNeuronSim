@@ -25,12 +25,15 @@ from numba import njit, prange
 
 
 @njit(parallel=True)
-def _make_lut_numba(N, M, s1, s2, gamma_X, gamma_Y, Tc, Tx, Ty,
+def _make_lut_numba(N, M, s1, s2, Tx, Wx, Ty, Wy,
                     tau1, b1, S, WE11, WE12, WI11, WI12,
                     tau2, b2, WE21, WE22, WI21, WI22):
 
     Fin = np.zeros((N,N), dtype=np.int16)
     Gin = np.zeros((N,N), dtype=np.int16)
+
+    delta_X = Wx/Tx
+    delta_Y = Wy/Ty
 
     for idx in prange(N*N):
 
@@ -42,23 +45,23 @@ def _make_lut_numba(N, M, s1, s2, gamma_X, gamma_Y, Tc, Tx, Ty,
 
         if F >= 0   and F <  0.0001: Fin[x, y] = M-1
         elif F < 0  and F > -0.0001: Fin[x, y] = -(M-1)
-        elif F >= 0 and F >= 0.0001: Fin[x, y] = math.ceil(1/(F/(Tc/Tx)))
-        else: Fin[x, y] = math.floor(1/(F/(Tc/Tx)))
+        elif F >= 0 and F >= 0.0001: Fin[x, y] = math.ceil(1/(F/delta_X)) #math.ceil(1/(F/delta_X))
+        else: Fin[x, y] = math.floor(1/(F/delta_X)) #math.floor(1/(F/delta_X))
 
         G = (1/tau2)*((b2*S+WE21*(x/s1)**2+WE22*(y/s2)**2)*(1-y/s2)
                         -(1+WI21*(x/s1)**2+WI22*(y/s2)**2)*y/s2)
 
         if G >= 0   and G <  0.0001: Gin[x, y] = M-1
         elif G < 0  and G > -0.0001: Gin[x, y] = -(M-1)
-        elif G >= 0 and G >= 0.0001: Gin[x, y] = math.ceil(1/(G/(Tc/Ty)))
-        else: Gin[x, y] = math.floor(1/(G/(Tc/Ty)))
+        elif G >= 0 and G >= 0.0001: Gin[x, y] =  math.ceil(1/(G/delta_Y)) #math.ceil(1/(G/delta_Y))
+        else: Gin[x, y] =  math.floor(1/(G/delta_Y)) #math.floor(1/(G/delta_Y))
 
     return Fin, Gin
 
 
 
 @njit(parallel=True)
-def _make_rotated_lut_numba(N, M, s1, s2, gamma_X, gamma_Y, Tc, Tx, Ty,
+def _make_rotated_lut_numba(N, M, s1, s2, Tx, Wx, Ty, Wy,
               tau1, b1, S, WE11, WE12, WI11, WI12,
               tau2, b2, WE21, WE22, WI21, WI22,
               rotated_x, rotated_y, deg):
@@ -67,6 +70,9 @@ def _make_rotated_lut_numba(N, M, s1, s2, gamma_X, gamma_Y, Tc, Tx, Ty,
     Gin = np.zeros((N,N), dtype=np.int16)
 
     theta = deg * math.pi / 180 # pi/180 (radian) = 1 [degree]
+
+    delta_X = Wx/Tx
+    delta_Y = Wy/Ty
 
     for idx in prange(N*N):
 
@@ -89,20 +95,20 @@ def _make_rotated_lut_numba(N, M, s1, s2, gamma_X, gamma_Y, Tc, Tx, Ty,
 
         if F >= 0   and F <  0.0001: Fin[ix, iy] = M-1
         elif F < 0  and F > -0.0001: Fin[ix, iy] = -(M-1)
-        elif F >= 0 and F >= 0.0001: Fin[ix, iy] = math.ceil(1/(F/(Tc/Tx)))
-        else: Fin[ix, iy] = math.floor(1/(F/(Tc/Tx)))
+        elif F >= 0 and F >= 0.0001: Fin[ix, iy] = math.ceil(1/(F/delta_X))
+        else: Fin[ix, iy] = math.floor(1/(F/delta_X))
 
         if G >= 0   and G <  0.0001: Gin[ix, iy] = M-1
         elif G < 0  and G > -0.0001: Gin[ix, iy] = -(M-1)
-        elif G >= 0 and G >= 0.0001: Gin[ix, iy] = math.ceil(1/(G/(Tc/Ty)))
-        else: Gin[ix, iy] = math.floor(1/(G/(Tc/Ty)))
+        elif G >= 0 and G >= 0.0001: Gin[ix, iy] = math.ceil(1/(G/delta_Y))
+        else: Gin[ix, iy] = math.floor(1/(G/delta_Y))
 
     return Fin, Gin
 
 
 @njit
 def calc_time_evolution_eca(init_X, init_Y, init_P, init_Q, init_phX, init_phY,
-                        N, M, Tc, Tx, Ty,
+                        N, M, Tc, Tx, Wx, Ty, Wy,
                         total_step, index_start, store_step, Fin, Gin):
 
     # variables
@@ -127,7 +133,7 @@ def calc_time_evolution_eca(init_X, init_Y, init_P, init_Q, init_phX, init_phY,
     for i in range(total_step):
 
         # time evolution
-        T, phx_next, phy_next, Cx, Cy = time_evolution(Tc, Tx, Ty, T, phx_previous, phy_previous)
+        T, phx_next, phy_next, Cx, Cy = time_evolution(Tc, Tx, Wx, Ty, Wy, T, phx_previous, phy_previous)
 
         # calculate
         Fx = Fin[x_previous, y_previous]
@@ -204,12 +210,12 @@ def calc_time_evolution_eca(init_X, init_Y, init_P, init_Q, init_phX, init_phY,
 
 
 @njit
-def time_evolution(Tc, Tx, Ty, T, phx_previous, phy_previous):
+def time_evolution(Tc, Tx, Wx, Ty, Wy, T, phx_previous, phy_previous):
 
     T = T + Tc
 
-    Cx = 1 if phx_previous >= (1-Tc/Tx) else 0
-    Cy = 1 if phy_previous >= (1-Tc/Ty) else 0
+    Cx = 1 if phx_previous >= (1-Wx/Tx) else 0
+    Cy = 1 if phy_previous >= (1-Wy/Ty) else 0
 
     phx_next = phx_previous + Tc/Tx
     phy_next = phy_previous + Tc/Ty

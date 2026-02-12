@@ -64,10 +64,10 @@ class ABECA:
         # variables
         x = np.arange(0, params["N"], 1, dtype=np.int16)
         y = np.arange(0, params["N"], 1, dtype=np.int16)
-        p = np.array([0, 2, 4, 8, 16, 32, 48, 63], dtype=np.int16)
-        q = np.array([0, 2, 4, 8, 16, 32, 48, 63], dtype=np.int16)
-        phX = np.arange(0, 1.0, 0.2)
-        phY = np.arange(0, 1.0, 0.2)
+        p = np.array([0, 4, 8, 16, 32], dtype=np.int16)
+        q = np.array([0, 4, 8, 16, 32], dtype=np.int16)
+        phX = np.arange(0, 1.0, 0.3)
+        phY = np.arange(0, 1.0, 0.3)
 
         # meshgrid
         xx_mesh, yy_mesh = np.meshgrid(x, y, indexing = "ij")
@@ -84,7 +84,7 @@ class ABECA:
         sT, eT = 300, 500
         tau1, b1, S, WE11, WE12, WI11, WI12 = params['tau1'], params['b1'], params['S'], params['WE11'], params['WE12'], params['WI11'], params['WI12']
         tau2, b2, WE21, WE22, WI21, WI22 = params['tau2'], params['b2'], params['WE21'], params['WE22'], params['WI21'], params['WI22']
-        N, M, s1, s2, gamma_X, gamma_Y, Tc, Tx, Ty = params["N"], params["M"], params["s1"], params["s2"], params["gamma_X"], params["gamma_Y"], params["Tc"], params["Tx"], params["Ty"]
+        N, M, s1, s2, Tc, Tx, Wx, Ty, Wy = params["N"], params["M"], params["s1"], params["s2"], params["Tc"], params["Tx"], params["Wx"], params["Ty"], params["Wy"]
 
         # store step
         total_step = int(eT/Tc)+1
@@ -92,7 +92,7 @@ class ABECA:
         store_step = (total_step - index_start) // 100 + 1 if total_step > index_start else 0
 
         # lut (vector field function)
-        Fin, Gin = _make_lut_numba(N, M, s1, s2, gamma_X, gamma_Y, Tc, Tx, Ty,
+        Fin, Gin = _make_lut_numba(N, M, s1, s2, Tx, Wx, Ty, Wy,
                                     tau1, b1, S, WE11, WE12, WI11, WI12,
                                     tau2, b2, WE21, WE22, WI21, WI22)
 
@@ -116,7 +116,7 @@ class ABECA:
 
             x_max, x_min, y_max, y_min = self.calc_attraction_basin(
                                                         xx[idx], yy[idx], pp, qq, phxx, phyy,
-                                                        N,  M, Tc, Tx, Ty,
+                                                        N,  M, Tc, Tx, Wx, Ty, Wy,
                                                         total_step, index_start, store_step, Fin, Gin)
 
             xmax_hist[idx, :] = x_max
@@ -142,7 +142,7 @@ class ABECA:
 
         # graphic of heatmap, nullclines, timewaveform
         self.graphics_all(xx_mesh, yy_mesh, xx, yy, pp, qq, phxx, phyy, result_list,
-                          N, M, Tc, Tx, Ty,
+                          N, M, Tc, Tx, Wx, Ty, Wy,
                           total_step, index_start, store_step, Fin, Gin)
 
 
@@ -169,7 +169,7 @@ class ABECA:
     @staticmethod
     @njit(parallel=True)
     def calc_attraction_basin(init_x, init_y, pp, qq, pphX, pphY,
-                              N,  M, Tc, Tx, Ty,
+                              N,  M, Tc, Tx, Wx, Ty, Wy,
                               total_step, index_start, store_step, Fin, Gin):
 
         # conditions number (init_P, init_Q, init_phX, init_phY)
@@ -186,7 +186,7 @@ class ABECA:
 
             # Calculate
             _, x_hist, y_hist = calc_time_evolution_eca(init_x, init_y, pp[idx], qq[idx], pphX[idx], pphY[idx],
-                                                        N, M, Tc, Tx, Ty,
+                                                        N, M, Tc, Tx, Wx, Ty, Wy,
                                                         total_step, index_start, store_step, Fin, Gin)
 
             # prepare max, min
@@ -200,82 +200,116 @@ class ABECA:
 
     def analysis_phase_plain(self, x_max, x_min, y_max, y_min):
 
-        # get init conditions
-        num_init_conds, num_param_conds = x_max.shape
+        num_xy_conds, num_pqphi_conds = x_max.shape
 
-        # center point
-        x_cen, y_cen = (x_max + x_min) / 2, (y_max + y_min) / 2
-        xy = np.stack((x_cen, y_cen), axis=2)
+        # per-cell classification: 0=unclassified, 1=eq, 3=po
+        cell_type = np.zeros((num_xy_conds, num_pqphi_conds), dtype=int)
+        cell_pair = np.zeros((num_xy_conds, num_pqphi_conds, 2))
 
-        # 状態分類用
-        param_conds = np.zeros((num_init_conds, num_param_conds), dtype=int)  # 各 param_conds の状態 (1, 2, 3)
-        result_list = []  # 各 init_conds の状態 (1, 2, 3, 4)
+        for i in range(num_xy_conds):
+            for j in range(num_pqphi_conds):
+                cell_pair[i, j, 0] = x_max[i, j]
+                cell_pair[i, j, 1] = x_min[i, j]
+                if (x_max[i, j] - x_min[i, j]) > 3:
+                    cell_type[i, j] = 3  # periodic orbit
+                else:
+                    cell_type[i, j] = 1  # equilibrium candidate
 
-        # インデックスを保持する変数
+        # collect all eq pairs and all po pairs across all cells
+        all_eq_pairs = []
+        all_po_pairs = []
+
+        for i in range(num_xy_conds):
+            for j in range(num_pqphi_conds):
+                pair = (cell_pair[i, j, 0], cell_pair[i, j, 1])
+                if cell_type[i, j] == 1:
+                    all_eq_pairs.append(pair)
+                elif cell_type[i, j] == 3:
+                    all_po_pairs.append(pair)
+
+        # merge logic: find unique attractors
+        def find_unique(pairs):
+            unique = []
+            for p in pairs:
+                if p[0] is None:
+                    continue
+                p_max, p_min = p[0], p[1]
+                merged = False
+                for k, existing in enumerate(unique):
+                    ex_max, ex_min = existing[0], existing[1]
+                    if (p_max <= ex_max and p_min >= ex_min) or \
+                       (abs(p_max - ex_max) <= 1 and abs(p_min - ex_min) <= 1):
+                        merged = True
+                        if (p_max - p_min) < (ex_max - ex_min):
+                            unique[k] = p
+                        break
+                if not merged:
+                    unique.append(p)
+            return unique
+
+        unique_eq = find_unique(all_eq_pairs)
+        unique_po = find_unique(all_po_pairs)
+
+        # assign eq index (1, 2, ...) to each unique equilibrium
+        # assign each cell to its closest unique attractor
+        param_conds = np.zeros((num_xy_conds, num_pqphi_conds), dtype=int)
+
+        for i in range(num_xy_conds):
+            for j in range(num_pqphi_conds):
+                p_max = cell_pair[i, j, 0]
+                p_min = cell_pair[i, j, 1]
+
+                if cell_type[i, j] == 1:
+                    # find which unique_eq this belongs to
+                    for eq_idx, eq in enumerate(unique_eq):
+                        if (p_max <= eq[0] + 1 and p_min >= eq[1] - 1) or \
+                           (abs(p_max - eq[0]) <= 1 and abs(p_min - eq[1]) <= 1):
+                            param_conds[i, j] = eq_idx + 1  # 1-indexed
+                            break
+
+                elif cell_type[i, j] == 3:
+                    # find which unique_po this belongs to
+                    for po_idx, po in enumerate(unique_po):
+                        if (p_max <= po[0] + 1 and p_min >= po[1] - 1) or \
+                           (abs(p_max - po[0]) <= 1 and abs(p_min - po[1]) <= 1):
+                            # po is numbered after eq
+                            param_conds[i, j] = len(unique_eq) + po_idx + 1
+                            break
+
+        # classify each init_cond across all param_conds
+        result_list = []
+
+        for i in range(num_xy_conds):
+            unique_states = set(param_conds[i])
+            unique_states.discard(0)
+
+            num_eq_found = sum(1 for s in unique_states if s <= len(unique_eq))
+            num_po_found = sum(1 for s in unique_states if s > len(unique_eq))
+
+            if num_eq_found == 1 and num_po_found == 0:
+                result_list.append(1)   # monostable
+            elif num_eq_found == 2 and num_po_found == 0:
+                result_list.append(2)   # bistable
+            elif num_eq_found == 0 and num_po_found == 1:
+                result_list.append(3)   # periodic orbit
+            elif num_eq_found >= 1 and num_po_found >= 1:
+                result_list.append(4)   # coexistence
+            else:
+                result_list.append(5)   # others
+
+        # store representative indices
         self.equ_1_idx = None
         self.equ_2_idx = None
         self.po_idx = None
 
-        # 状態を保持するための変数
-        equilibrium_points = {}  # 平衡点の値を管理する辞書 {(x, y): 状態番号}
-
-        """ param_conds の分類 """
-
-        for init_idx in range(num_init_conds):
-            for param_idx in range(num_param_conds):
-                if (x_max[init_idx, param_idx] - x_min[init_idx, param_idx]) > 2:
-                    # 周期軌道 (3)
-                    param_conds[init_idx, param_idx] = 3
-
-                    # 周期軌道の代表インデックスを保存
-                    if self.po_idx is None:
-                        self.po_idx = (init_idx, param_idx)
-                else:
-                    # 平衡点の場合
-                    current_xy = tuple(xy[init_idx, param_idx])  # (x, y) のタプル
-
-                    if current_xy in equilibrium_points:
-                        # 既に登録済みの平衡点 -> 登録されている番号を使用
-                        param_conds[init_idx, param_idx] = equilibrium_points[current_xy]
-                    else:
-                        # 新しい平衡点 -> 最初の平衡点は1, 以降は2
-                        if len(equilibrium_points) == 0:
-                            equilibrium_points[current_xy] = 1  # 最初の平衡点
-                            param_conds[init_idx, param_idx] = 1
-
-                            # 平衡点1の代表インデックスを保存
-                            if self.equ_1_idx is None:
-                                self.equ_1_idx = (init_idx, param_idx)
-                        else:
-                            equilibrium_points[current_xy] = 2  # 新しい平衡点
-                            param_conds[init_idx, param_idx] = 2
-
-                            # 平衡点2の代表インデックスを保存
-                            if self.equ_2_idx is None:
-                                self.equ_2_idx = (init_idx, param_idx)
-
-        """ init_conds の分類 """
-
-        for init_idx in range(num_init_conds):
-            unique_states = np.unique(param_conds[init_idx])
-
-            if len(unique_states) == 1:
-                # 1種類の状態のみ
-                if unique_states[0] == 1:
-                    result_list.append(1)  # 平衡点 (1)
-                elif unique_states[0] == 2:
-                    result_list.append(2)  # 別の平衡点 (2)
-                elif unique_states[0] == 3:
-                    result_list.append(3)  # 周期軌道 (3)
-            else:
-                # 共存解 (4)
-                result_list.append(4)
-
-        # インデックスの確認用出力
-        print("Representative indices:")
-        print(f"equ_1_idx: {self.equ_1_idx}")
-        print(f"equ_2_idx: {self.equ_2_idx}")
-        print(f"po_idx: {self.po_idx}")
+        for i in range(num_xy_conds):
+            for j in range(num_pqphi_conds):
+                if param_conds[i, j] == 1 and self.equ_1_idx is None:
+                    self.equ_1_idx = (i, j)
+                elif param_conds[i, j] == 2 and self.equ_2_idx is None:
+                    self.equ_2_idx = (i, j)
+                elif param_conds[i, j] > len(unique_eq) and self.po_idx is None:
+                    self.po_idx = (i, j)
 
         return result_list
 
@@ -291,7 +325,7 @@ class ABECA:
 
 
     def graphics_all(self, xx_mesh, yy_mesh, init_xx, init_yy, pp, qq, phxx, phyy, state,
-                     N, M, Tc, Tx, Ty,
+                     N, M, Tc, Tx, Wx, Ty, Wy,
                      total_step, index_start, store_step, Fin, Gin):
 
         state = np.array(state)
@@ -314,7 +348,7 @@ class ABECA:
             phY = phyy[self.equ_1_idx[1]]
 
             _, x_hist, y_hist = calc_time_evolution_eca(x, y, P, Q, phX, phY,
-                                                        N, M, Tc, Tx, Ty,
+                                                        N, M, Tc, Tx, Wx, Ty, Wy,
                                                         total_step, index_start, store_step, Fin, Gin)
 
             inst.add_result(x_hist, y_hist, c="red", l="equ")
@@ -331,7 +365,7 @@ class ABECA:
             phY = phyy[self.equ_1_idx[1]]
 
             _, x_hist, y_hist = calc_time_evolution_eca(x, y, P, Q, phX, phY,
-                                                        N, M, Tc, Tx, Ty,
+                                                        N, M, Tc, Tx, Wx, Ty, Wy,
                                                         total_step, index_start, store_step, Fin, Gin)
 
             inst.add_result(x_hist, y_hist, c="red", l="equ 1")
@@ -345,7 +379,7 @@ class ABECA:
             phY = phyy[self.equ_2_idx[1]]
 
             _, x_hist, y_hist = calc_time_evolution_eca(x, y, P, Q, phX, phY,
-                                                        N, M, Tc, Tx, Ty,
+                                                        N, M, Tc, Tx, Wx, Ty, Wy,
                                                         total_step, index_start, store_step, Fin, Gin)
 
             inst.add_result(x_hist, y_hist, c="blue", l="equ 2")
@@ -362,7 +396,7 @@ class ABECA:
             phY = phyy[self.po_idx[1]]
 
             _, x_hist, y_hist = calc_time_evolution_eca(x, y, P, Q, phX, phY,
-                                                        N, M, Tc, Tx, Ty,
+                                                        N, M, Tc, Tx, Wx, Ty, Wy,
                                                         total_step, index_start, store_step, Fin, Gin)
 
             inst.add_result(x_hist, y_hist, c="gray", l="periodic orbit")

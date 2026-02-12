@@ -77,39 +77,43 @@ class FrParamConfig:
         fr = ttk.Frame(row_fr, style="Custom1.TFrame")
         fr.grid(row=6, column=0, padx=2,  pady=2, sticky="nsew")
 
+
         # row 0
-        self.set_bif_param_frame(fr, 0)
+        fr1 = ttk.Frame(fr, style= "Custom2.TFrame") # Custom2.TFrame does not have frames
+        fr1.grid(row=7, column=0, sticky="nsew")
+        self.set_bif_param_frame(fr1)
 
         # row 1
-        self.set_ca_param_frame(fr, 2)
+        fr2 = ttk.Frame(fr, style="Custom2.TFrame")
+        fr2.grid(row=8, column=0, sticky="nsew")
+        self.set_ca_param_frame(fr2)
 
         # row 2
-        self.set_sim_param_frame(fr, 4)
+        fr3 = ttk.Frame(fr, style="Custom2.TFrame")
+        fr3.grid(row=9, column=0, sticky="nsew")
+        self.set_sim_param_frame(fr3)
 
 
-    def set_bif_param_frame(self, widget, r):
+    def set_bif_param_frame(self, fr):
 
         """ Setting: Bifurcation Parameters """
+        title = ttk.Label(fr, text="Bifurcation Parameter", style = "Custom1.TLabel")
+        title.grid(row=0, column=0, columnspan=4, padx=2,  pady=2, sticky=tk.W)
 
-        # Title
-        title = ttk.Label(widget, text="Bifurcation Parameter", style = "Custom1.TLabel")
-        title.grid(row=r, column=0, columnspan=2, padx=2,  pady=2, sticky=tk.W)
-
-        # widget
-        fr = ttk.Frame(widget, style = "Custom2.TFrame")
-        fr.grid(row=r+1, column=0, padx=2,  pady=2,sticky=tk.W)
-
-        """ Set widgets"""
+        # Set column width
+        fr_col_config = [20, 20, 20, 20]
+        for i, width in enumerate(fr_col_config):
+            fr.columnconfigure(i, minsize=width)
 
         atrs = ["Q", "S"]
 
         for index, n in enumerate(atrs):
 
             txt = ttk.Label(fr, text= n, style="Custom1.TLabel")
-            txt.grid(row=0, column=index*2, padx=4, pady=2)
+            txt.grid(row=1, column=index*2, padx=4, pady=2)
 
             entry = ttk.Entry(fr, width = 6)
-            entry.grid(row=0, column=index*2+1, padx=4, pady=2)
+            entry.grid(row=1, column=index*2+1, padx=4, pady=2)
             entry.insert(0, self.master.params[n])      # Default value
 
             self.master.entries[n] = entry
@@ -118,7 +122,7 @@ class FrParamConfig:
 
         # model select
         tex = ttk.Label(fr, text="Param Set", style="Custom1.TLabel")
-        tex.grid(row=0, column=4, padx=2, pady=2, sticky=tk.W)
+        tex.grid(row=1, column=4, padx=2, pady=2, sticky=tk.W)
 
         def on_combobox_select(event):
 
@@ -142,56 +146,53 @@ class FrParamConfig:
 
         combo_value = ["set 1", "set 2", "set 3", "set 4"]
         combo = ttk.Combobox(fr, values=combo_value, width=10)
-        combo.grid(row=0, column=5, padx=2, pady=2)
+        combo.grid(row=1, column=5, padx=2, pady=2)
         combo.set("set 1")  # Default value
         combo.bind("<<ComboboxSelected>>", on_combobox_select)
         self.master.combos["param set"] = combo
 
 
-    def set_ca_param_frame(self, widget, r):
+    def set_ca_param_frame(self, fr):
+
         """ Setting: CA parameters """
+        text = ttk.Label(fr, text="CA parameters", style="Custom1.TLabel")
+        text.grid(row=0, column=0, columnspan=3, padx=2, pady=2, sticky=tk.W)
 
-        # Title
-        text = ttk.Label(widget, text="CA parameters", style="Custom1.TLabel")
-        text.grid(row=r, column=0, columnspan=3, padx=2, pady=2, sticky=tk.W)
-
-        # widget
-        fr = ttk.Frame(widget, style="Custom2.TFrame")
-        fr.grid(row=r+1, column=0, padx=2,  pady=2, sticky=tk.W)
-
+        # Set column width
         fr_col_config = [30, 30, 30, 30]
-
         for i, width in enumerate(fr_col_config):
             fr.columnconfigure(i, minsize=width)
 
-        """ Set widgets: CA parameters columns = [0, 1]"""
 
-        atrs1 = [("N: 2 **", "Ns"), ("M: 2 **", "Ms"),
-                ("s1: 2 **", "s1_s"), ("s2: 2 **", "s2_s"),
+        atrs1 = [("N:", "Ns"), ("M:", "Ms"),
+                ("s1:", "s1_s"), ("s2:", "s2_s"),
                 ("deg:", "deg"),
                 ("Tc:", "Tc"),
-                ("Tx:", "Tx_rat"), ("Ty:", "Ty_rat")]
+                ("Tx:", "Tx_rat"),
+                ("Wx:", "Wx_rat"),
+                ("Ty:", "Ty_rat"),
+                ("Wy:", "Wy_rat")]
+
 
         for index, n in enumerate(atrs1):
 
             txt = ttk.Label(fr, text= n[0], style="Custom1.TLabel")
-            txt.grid(row=index, column=0, padx=6, pady=2, sticky=tk.W)
+            txt.grid(row=index+1, column=0, padx=6, pady=2, sticky=tk.W)
 
             if n[1] in ["Ns", "Ms", "s1_s", "s2_s"]:
 
                 sv = tk.StringVar(value=self.master.params[n[1]])
                 entry = ttk.Entry(fr, width = 6, textvariable=sv)
-                entry.grid(row=index, column=1, padx=4, pady=2)
+                entry.grid(row=index+1, column=1, padx=4, pady=2)
 
-                sv.trace_add("write", lambda name, idx, op, sv=sv, key=n[1]: self.update_power_label(sv, key))
+                sv.trace_add("write", lambda *args, sv=sv, key=n[1]: self.update_power_label(sv, key))
 
                 self.master.string_var[n[1]]= sv
 
             else:
 
                 entry = ttk.Entry(fr, width = 6)
-                entry.grid(row=index, column=1, padx=4, pady=2)
-                
+                entry.grid(row=index+1, column=1, padx=4, pady=2)
                 entry.insert(0, self.master.params[n[1]])
 
                 self.master.entries[n[1]] = entry
@@ -199,21 +200,33 @@ class FrParamConfig:
 
         """ Set widgets: CA parameters columns = [2, 3] """
 
-        atrs2 = [(0, "Ns"), (1, "Ms"), (2, "s1_s"), (3, "s2_s"), (6, "Tx_sqrt"), (7, "Ty_sqrt")]
+        atrs2 = [(1, "Ns"), (2, "Ms"),
+                 (3, "s1_s"), (4, "s2_s"),
+                 (7, "Tx_sqrt"),
+                 (8, "Wx_sqrt"),
+                 (9, "Ty_sqrt"),
+                 (10, "Wy_sqrt")]
 
         self.master.power_labels = {}
 
         for index, n in enumerate(atrs2):
 
-            if n[0] in [0, 1, 2, 3]:
+            if n[0] in [1, 2, 3, 4]:
 
-                string = "= " + str(2 ** int(self.master.string_var[n[1]].get()))
+                if n[1] == "Ns":
+                    string = "2**N= " + str(2 ** int(self.master.string_var[n[1]].get()))
+                elif n[1] == "Ms":
+                    string = "2**M= " + str(2 ** int(self.master.string_var[n[1]].get()))
+                elif n[1] == "s1_s":
+                    string = "2**s1= " + str(2 ** int(self.master.string_var[n[1]].get()))
+                elif n[1] == "s2_s":
+                    string = "2**s2= " + str(2 ** int(self.master.string_var[n[1]].get()))
 
                 txt = ttk.Label(fr, text= string, style="Custom1.TLabel")
                 txt.grid(row=n[0], column=2, columnspan=2, padx=4, pady=2, sticky=tk.W)
                 self.master.power_labels[n[1]] = txt
 
-            elif n[0] in [6, 7]:
+            elif n[0] in [7, 8, 9, 10]:
 
                 txt = ttk.Label(fr, text= "*√", style="Custom1.TLabel")
                 txt.grid(row=n[0], column=2, padx=4, pady=2, sticky=tk.E)
@@ -233,7 +246,7 @@ class FrParamConfig:
 
         try:
             result = 2 ** int(value)
-            self.master.power_labels[key].config(text=f"= {result}")
+            self.master.power_labels[key].config(text=f"2**{lut[key]}= {result}")
 
             # update self.master.params[N, M]
             self.master.params[lut[key]] = result
@@ -241,20 +254,16 @@ class FrParamConfig:
             self.master.power_labels[key].config(text="= ...")
 
 
-    def set_sim_param_frame(self, row_fr, r):
+    def set_sim_param_frame(self, fr):
 
         """ Preset """
 
         # Title
-        title = ttk.Label(row_fr, text="Simulation Parameter", style="Custom1.TLabel")
-        title.grid(row=r, column=0, columnspan=3, padx=2, pady=2, sticky=tk.W)
+        title = ttk.Label(fr, text="Simulation Parameter", style="Custom1.TLabel")
+        title.grid(row=0, column=0, columnspan=3, padx=2, pady=2, sticky=tk.W)
 
-        # master frame
-        fr =ttk.Frame(row_fr, style="Custom2.TFrame")
-        fr.grid(row=r+1, column=0, padx=2, pady=2, sticky="nsew")
-
+        # Set column width
         fr_column_setting = [30, 30, 30, 30]
-
         for index, span in enumerate(fr_column_setting):
             fr.columnconfigure(index, minsize=span)
 
@@ -265,10 +274,10 @@ class FrParamConfig:
         for index, name in enumerate(atrs):
 
             txt = ttk.Label(fr, text = name, style = "Custom1.TLabel")
-            txt.grid(row=0, column=index*2, padx=4, pady=2, sticky="nsew")
+            txt.grid(row=1, column=index*2, padx=4, pady=2, sticky="nsew")
 
             entry = ttk.Entry(fr, width=6)
-            entry.grid(row=0, column=index*2+1, padx=4, pady=2)
+            entry.grid(row=1, column=index*2+1, padx=4, pady=2)
             entry.insert(0, self.master.params[name])      # Default value
 
             self.master.entries[name] = entry

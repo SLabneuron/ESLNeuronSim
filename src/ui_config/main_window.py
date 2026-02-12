@@ -125,6 +125,8 @@ class WindowSetup:
         # calculate Tx, Ty
         self.params["Tx"] = self.params["Tx_rat"] * self.params["Tx_sqrt"] ** (1/2)
         self.params["Ty"] = self.params["Ty_rat"] * self.params["Ty_sqrt"] ** (1/2)
+        self.params["Wx"] = self.params["Wx_rat"] * self.params["Wx_sqrt"] ** (1/2)
+        self.params["Wy"] = self.params["Wy_rat"] * self.params["Wy_sqrt"] ** (1/2)
 
         # resolve lambda equ
         self.params["b1"] = eval(self.params["b1_equ"])()

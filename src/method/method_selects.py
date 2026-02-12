@@ -277,7 +277,10 @@ class MethodSelects:
         tau2, b2, WE21, WE22, WI21, WI22 = params['tau2'], params['b2'], params['WE21'], params['WE22'], params['WI21'], params['WI22']
 
         # ca params
-        N, M, s1, s2, gamma_X, gamma_Y, Tc, Tx, Ty = params["N"], params["M"], params["s1"], params["s2"], params["gamma_X"], params["gamma_Y"], params["Tc"], params["Tx"], params["Ty"]
+        N, M, s1, s2, Tc = params["N"], params["M"], params["s1"], params["s2"], params["Tc"]
+
+        # switch signals
+        Tx, Wx, Ty, Wy = params["Tx"], params["Wx"], params["Ty"], params["Wy"]
 
         # store step
         total_step = int(eT/Tc)+1
@@ -288,12 +291,12 @@ class MethodSelects:
         t0 = time.perf_counter()
         print("\n start: ", bench_sT)
 
-        Fin, Gin = _make_lut_numba(N, M, s1, s2, gamma_X, gamma_Y, Tc, Tx, Ty,
+        Fin, Gin = _make_lut_numba(N, M, s1, s2, Tx, Wx, Ty, Wy,
                                     tau1, b1, S, WE11, WE12, WI11, WI12,
                                     tau2, b2, WE21, WE22, WI21, WI22)
 
         t_hist, x_hist, y_hist = calc_time_evolution_eca(init_x, init_y, init_P, init_Q, init_phX, init_phY,
-                                                            N, M, Tc, Tx, Ty,
+                                                            N, M, Tc, Tx, Wx, Ty, Wy,
                                                             total_step, index_start, store_step, Fin, Gin)
 
 
@@ -330,9 +333,13 @@ class MethodSelects:
         tau2, b2, WE21, WE22, WI21, WI22 = params['tau2'], params['b2'], params['WE21'], params['WE22'], params['WI21'], params['WI22']
 
         # ca params
-        N, M, s1, s2, gamma_X, gamma_Y, Tc, Tx, Ty = params["N"], params["M"], params["s1"], params["s2"], params["gamma_X"], params["gamma_Y"], params["Tc"], params["Tx"], params["Ty"]
-        deg = params["deg"]
+        N, M, s1, s2, Tc = params["N"], params["M"], params["s1"], params["s2"], params["Tc"]
         
+        deg = params["deg"]
+
+        # switch signals
+        Tx, Wx, Ty, Wy = params["Tx"], params["Wx"], params["Ty"], params["Wy"]
+
         # store step
         total_step = int(eT/Tc)+1
         index_start = int(sT/Tc)
@@ -343,13 +350,13 @@ class MethodSelects:
 
         rotated_x, rotated_y =_make_rotated_coordinate(N, deg) # (size, degree)
 
-        Fin, Gin = _make_rotated_lut_numba(N, M, s1, s2, gamma_X, gamma_Y, Tc, Tx, Ty,
+        Fin, Gin = _make_rotated_lut_numba(N, M, s1, s2, Tx, Wx, Ty, Wy,
                                     tau1, b1, S, WE11, WE12, WI11, WI12,
                                     tau2, b2, WE21, WE22, WI21, WI22,
                                     rotated_x, rotated_y, deg)
 
         t_hist, x_hist, y_hist = calc_time_evolution_eca(init_x, init_y, init_P, init_Q, init_phX, init_phY,
-                                                         N, M, Tc, Tx, Ty,
+                                                         N, M, Tc, Tx, Wx, Ty, Wy,
                                                          total_step, index_start, store_step, Fin, Gin)
 
 

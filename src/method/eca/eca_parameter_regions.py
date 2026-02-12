@@ -67,8 +67,8 @@ class PRECA:
         params = self.params
 
         # variables
-        x = np.arange(0, self.params["N"], 4, dtype=np.int16)
-        y = np.arange(0, self.params["N"], 4, dtype=np.int16)
+        x = np.arange(0, self.params["N"], 6, dtype=np.int16)
+        y = np.arange(0, self.params["N"], 6, dtype=np.int16)
 
         xx_mesh, yy_mesh = np.meshgrid(x, y)
         xx, yy = xx_mesh.flatten(), yy_mesh.flatten()
@@ -78,7 +78,7 @@ class PRECA:
         sT, eT = 300, 500
         tau1, b1, WE11, WE12, WI11, WI12 = params['tau1'], params['b1'], params['WE11'], params['WE12'], params['WI11'], params['WI12']
         tau2, b2, WE21, WE22, WI21, WI22 = params['tau2'], params['b2'], params['WE21'], params['WE22'], params['WI21'], params['WI22']
-        N, M, s1, s2, gamma_X, gamma_Y, Tc, Tx, Ty = params["N"], params["M"], params["s1"], params["s2"], params["gamma_X"], params["gamma_Y"], params["Tc"], params["Tx"], params["Ty"]
+        N, M, s1, s2, Tc, Tx, Wx, Ty, Wy = params["N"], params["M"], params["s1"], params["s2"], params["Tc"], params["Tx"], params["Wx"], params["Ty"], params["Wy"]
 
         # store step
         total_step = int(eT/Tc)+1
@@ -88,8 +88,8 @@ class PRECA:
         """ bifurcation """
 
         # Conditions of S, Q
-        bif_S = np.arange(0.20, 0.70, 0.005)
-        bif_Q = np.arange(0.20, 0.70, 0.005)
+        bif_S = np.arange(0.20, 0.70, 0.01)
+        bif_Q = np.arange(0.20, 0.70, 0.01)
 
         num_S = bif_S.size
         num_Q = bif_Q.size
@@ -118,12 +118,12 @@ class PRECA:
                 else:
                     b1, b2, WI12 = 0.13*(1-Q), 0.26*Q, 0
 
-                Fin, Gin = _make_lut_numba(N, M, s1, s2, gamma_X, gamma_Y, Tc, Tx, Ty,
+                Fin, Gin = _make_lut_numba(N, M, s1, s2, Tx, Wx, Ty, Wy,
                                         tau1, b1, bif_S[idx_s], WE11, WE12, WI11, WI12,
                                         tau2, b2, WE21, WE22, WI21, WI22)
 
                 x_max, x_min = self.calc_parameter_region(xx, yy, 0, 0, 0, 0,
-                                                          N, M, Tc, Tx, Ty,
+                                                          N, M, Tc, Tx, Wx, Ty, Wy,
                                                           total_step, index_start, store_step, Fin, Gin)
 
                 S_hist[idx_s, idx_q, :] = bif_S[idx_s]
@@ -188,18 +188,18 @@ class PRECA:
         params = self.params
 
         # variables
-        x = np.arange(0, self.params["N"], 4, dtype=np.int16)
-        y = np.arange(0, self.params["N"], 4, dtype=np.int16)
+        x = np.arange(0, self.params["N"], 6, dtype=np.int16)
+        y = np.arange(0, self.params["N"], 6, dtype=np.int16)
 
         xx_mesh, yy_mesh = np.meshgrid(x, y)
         xx, yy = xx_mesh.flatten(), yy_mesh.flatten()
         conds_size = xx.size        # initial conditions
 
         # parameters
-        sT, eT = 300, 500
+        sT, eT = 500, 800
         tau1, b1, WE11, WE12, WI11, WI12 = params['tau1'], params['b1'], params['WE11'], params['WE12'], params['WI11'], params['WI12']
         tau2, b2, WE21, WE22, WI21, WI22 = params['tau2'], params['b2'], params['WE21'], params['WE22'], params['WI21'], params['WI22']
-        N, M, s1, s2, gamma_X, gamma_Y, Tc, Tx, Ty = params["N"], params["M"], params["s1"], params["s2"], params["gamma_X"], params["gamma_Y"], params["Tc"], params["Tx"], params["Ty"]
+        N, M, s1, s2, Tc, Tx, Wx, Ty, Wy = params["N"], params["M"], params["s1"], params["s2"], params["Tc"], params["Tx"], params["Wx"], params["Ty"], params["Wy"]
         deg = params["deg"]
 
         # store step
@@ -210,8 +210,8 @@ class PRECA:
         """ bifurcation """
 
         # Conditions of S, Q
-        bif_S = np.arange(0.20, 0.70, 0.005)
-        bif_Q = np.arange(0.20, 0.70, 0.005)
+        bif_S = np.arange(0.20, 0.70, 0.01)
+        bif_Q = np.arange(0.20, 0.70, 0.01)
 
         num_S = bif_S.size
         num_Q = bif_Q.size
@@ -242,13 +242,13 @@ class PRECA:
                 else:
                     b1, b2, WI12 = 0.13*(1-Q), 0.26*Q, 0
 
-                Fin, Gin = _make_rotated_lut_numba(N, M, s1, s2, gamma_X, gamma_Y, Tc, Tx, Ty,
+                Fin, Gin = _make_rotated_lut_numba(N, M, s1, s2, Tx, Wx, Ty, Wy,
                                         tau1, b1, bif_S[idx_s], WE11, WE12, WI11, WI12,
                                         tau2, b2, WE21, WE22, WI21, WI22,
                                         rotated_x, rotated_y, deg)
 
                 x_max, x_min = self.calc_parameter_region(xx, yy, 0, 0, 0, 0,
-                                                          N, M, Tc, Tx, Ty,
+                                                          N, M, Tc, Tx, Wx, Ty, Wy,
                                                           total_step, index_start, store_step, Fin, Gin)
 
                 S_hist[idx_s, idx_q, :] = bif_S[idx_s]
@@ -312,7 +312,7 @@ class PRECA:
     @staticmethod
     @njit(parallel=True)
     def calc_parameter_region(xx, yy, pp, qq, phxx, phyy,
-                              N, M, Tc, Tx, Ty,
+                              N, M, Tc, Tx, Wx, Ty, Wy,
                               total_step, index_start, store_step, Fin, Gin):
 
         # conditions number (x, y)
@@ -326,7 +326,7 @@ class PRECA:
         for idx in prange(total_conds):
 
             _, x_hist, _ = calc_time_evolution_eca(xx[idx], yy[idx], pp, qq, phxx, phyy,
-                                                   N, M, Tc, Tx, Ty,
+                                                   N, M, Tc, Tx, Wx, Ty, Wy,
                                                    total_step, index_start, store_step, Fin, Gin)
 
             # update max, min
@@ -341,10 +341,10 @@ class PRECA:
         # [(x_max[0], x_min[0]), (x_max[1], x_min[1]), ...]
         x_max_min = np.column_stack((x_max, x_min))
 
+        """ analysis """
+
         # get unique (max, min) combination
         x_max_min_sort = np.unique(x_max_min, axis=0)
-
-        """ analysis """
 
         required = 3
         current = x_max_min_sort.shape[0]
@@ -371,15 +371,84 @@ class PRECA:
             else: po_pairs.append(pair)
 
         # get unique equilibrium (distance >= 3)
+        #unique_eq = [eq_pairs[0]]
+
+        #for eq in eq_pairs:
+        #    unique_eq.append(eq)
+        #    if all(np.linalg.norm(eq - existing_eq) >= 3 for existing_eq in unique_eq):
+        #        unique_eq.append(eq)
+
+        # get unique equilibrium
         unique_eq = []
 
         for eq in eq_pairs:
-            if all(np.linalg.norm(eq - existing_eq) >= 3 for existing_eq in unique_eq):
+            if eq[0] is None:
+                continue
+
+            eq_max, eq_min = eq[0], eq[1]
+            eq_size = eq_max - eq_min
+
+            merged = False
+            for i, existing in enumerate(unique_eq):
+                ex_max, ex_min = existing[0], existing[1]
+                ex_size = ex_max - ex_min
+
+                # i) eq is contained within existing
+                if eq_max <= ex_max and eq_min >= ex_min:
+                    merged = True
+                    # ii) if eq is smaller, replace
+                    if eq_size < ex_size:
+                        unique_eq[i] = eq
+                    break
+
+                # ii) nearly same position and size, within ±1 shift
+                if (abs(eq_max - ex_max) <= 1 and abs(eq_min - ex_min) <= 1):
+                    merged = True
+                    # replace if eq is smaller
+                    if eq_size < ex_size:
+                        unique_eq[i] = eq
+                    break
+
+            # iii) not merged means it has min > existing max or max < existing min
+            # i.e., clearly separate region -> new set
+            if not merged:
                 unique_eq.append(eq)
+
+        # get unique periodic orbit (same logic)
+        unique_po = []
+
+        for po in po_pairs:
+            if po[0] is None:
+                continue
+
+            po_max, po_min = po[0], po[1]
+            po_size = po_max - po_min
+
+            merged = False
+            for i, existing in enumerate(unique_po):
+                ex_max, ex_min = existing[0], existing[1]
+                ex_size = ex_max - ex_min
+
+                # i) po is contained within existing
+                if po_max <= ex_max and po_min >= ex_min:
+                    merged = True
+                    if po_size < ex_size:
+                        unique_po[i] = po
+                    break
+
+                # ii) nearly same position and size
+                if (abs(po_max - ex_max) <= 1 and abs(po_min - ex_min) <= 1):
+                    merged = True
+                    if po_size < ex_size:
+                        unique_po[i] = po
+                    break
+
+            if not merged:
+                unique_po.append(po)
 
         # count up eq and po
         num_eq = len(unique_eq)
-        num_po = len(po_pairs)
+        num_po = len(unique_po)
 
         """ classified state """
 
