@@ -70,6 +70,7 @@ from src.method.eca.eca_return_map import EcaReMap
 
 from src.method.eca.eca_sweep_TxTy import TxTyECA
 from src.method.eca.eca_sweep_theta import SweepThetaECA
+from src.method.eca.eca_sweep_graph import SweepLineGraph
 
 from src.method.eca.eca_lut import make_lut_for_verilog
 
@@ -154,6 +155,10 @@ class MethodSelects:
         elif sim_type == "TxTysweep":
             self.master.result_txtysweep = TxTyECA(self.master.params, self.file_name)
             self.master.result_txtysweep.run()
+        
+        elif sim_type == "Scheduled Analysis":
+            self.master.result_scheduled = SweepLineGraph(self.master.params, self.file_name)
+            self.master.result_scheduled.run()
 
         elif sim_type == "Output LUT":
 
@@ -197,9 +202,9 @@ class MethodSelects:
             self.master.result_tythetasweep = SweepThetaECA(self.master.params, self.file_name)
             self.master.result_tythetasweep.run_Tx()
 
-        elif sim_type == "TyTheta_sweep":
-            self.master.result_tythetasweep = SweepThetaECA(self.master.params, self.file_name)
-            self.master.result_tythetasweep.run_Ty()
+        elif sim_type == "Scheduled Analysis":
+            self.master.result_scheduled = SweepLineGraph(self.master.params, self.file_name)
+            self.master.result_scheduled.run()
 
         elif sim_type == "Output LUT":
 

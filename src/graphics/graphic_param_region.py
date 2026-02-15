@@ -142,13 +142,9 @@ def match_rate_get_df(csv_a: str, df: pd.DataFrame) -> None:
 
 if __name__ == "__main__":
 
-    # set 1 (ode)
-    ode_set1 = r"c:\Storage\02_paper\04_2025_Nolta journal\04_Python\data\results\set 1\forward euler\results\parameter region\20260108095815.csv"      # t = [400, 700]
-    ode_set1_2 = r"c:\Storage\02_paper\04_2025_Nolta journal\04_Python\data\results\set 1\forward euler\results\parameter region\20260112155128.csv"    # t = [1000, 1500]
-
-    # set 2 (ode)
-    ode_set2 = r"c:\Storage\02_paper\04_2025_Nolta journal\04_Python\data\results\set 2\forward euler\results\parameter region\20260108101541.csv"
-    ode_set2_2 = r"c:\Storage\02_paper\04_2025_Nolta journal\04_Python\data\results\set 2\forward euler\results\parameter region\20260112160036.csv"
+    # ode
+    ode_set1 = r"c:\Storage\02_paper\04_2025_Nolta journal\04_Python\data\results\set 1\forward euler\results\parameter region\20260216000243.csv"
+    ode_set2 = r"c:\Storage\02_paper\04_2025_Nolta journal\04_Python\data\results\set 2\forward euler\results\parameter region\20260216000431.csv"
 
     # set 1 (rotated ECA)
     rotated_eca_set1 = r"c:\Storage\02_paper\04_2025_Nolta journal\04_Python\data\results\set 1\rotated-LUT CA\results\parameter region\20260112164116.csv"
@@ -162,12 +158,12 @@ if __name__ == "__main__":
     # set 2 (normal ECA)
     normal_eca_set2 =r"c:\Storage\02_paper\04_2025_Nolta journal\04_Python\data\results\set 2\ergodic CA\results\parameter region\20260112162559.csv"
 
-    filepath = rotated_eca_set2
+    filepath = ode_set2
 
     graphic_pr(filepath)
 
 
     #match_rate(ode_set1, rotated_eca_set1)     # 96.72 %
-    match_rate(ode_set1_2, normal_eca_set1)     # 95.39 %   X*Y = 16*16 （間引き⇒１分）
+    #match_rate(ode_set1, normal_eca_set1)     # 95.39 %   X*Y = 16*16 （間引き⇒１分）
     #match_rate(ode_set2, rotated_eca_set2)     # 92.52 %
     #match_rate(ode_set2, normal_eca_set2)      # 92.02 %

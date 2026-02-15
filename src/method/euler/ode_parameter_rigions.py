@@ -46,15 +46,15 @@ class PRODE:
         params = self.params
 
         # variables
-        x = np.arange(0, 0.80, 0.05)
-        y = np.arange(0, 0.80, 0.05)
+        x = np.arange(0, 0.80, 0.1)
+        y = np.arange(0, 0.80, 0.1)
 
         xx_mesh, yy_mesh = np.meshgrid(x, y)
         xx, yy = xx_mesh.flatten(), yy_mesh.flatten()
         conds_size = xx.size
 
         # parameter
-        sT, eT, h = 1000, 1500, params["h"]
+        sT, eT, h = 1500, 2000, params["h"]
         tau1, b1, WE11, WE12, WI11, WI12 = params['tau1'], params['b1'], params['WE11'], params['WE12'], params['WI11'], params['WI12']
         tau2, b2, WE21, WE22, WI21, WI22 = params['tau2'], params['b2'], params['WE21'], params['WE22'], params['WI21'], params['WI22']
 
@@ -66,8 +66,8 @@ class PRODE:
         """ bifurcation """
 
         # Conditions of S, Q
-        bif_S = np.arange(0.20, 0.70, 0.005)
-        bif_Q = np.arange(0.20, 0.70, 0.005)
+        bif_S = np.arange(0.20, 0.70, 0.01)
+        bif_Q = np.arange(0.20, 0.70, 0.01)
 
         num_S = bif_S.size
         num_Q = bif_Q.size

@@ -95,7 +95,7 @@ class FrControl:
                         "ReturnMap",
                         "TxTysweep",
                         "TxTheta_sweep",
-                        "TyTheta_sweep",
+                        "Scheduled Analysis",
                         "Output LUT"]
         combo1 = ttk.Combobox(fr, values=combo1_value, width=15)
         combo1.grid(row=1, column=1, padx=2, pady=2)

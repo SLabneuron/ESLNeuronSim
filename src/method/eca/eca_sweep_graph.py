@@ -28,6 +28,8 @@ Contents: parameter region analysis for bifurcation diagram with two parameters 
 
 """
 
+
+
 # import standard library
 import numpy as np
 import pandas as pd
@@ -38,14 +40,16 @@ numba.set_num_threads(15)
 from numba import njit, prange
 
 import datetime, time
+import matplotlib.pyplot as plt
 
 # import my library
+"""
 from src.method.eca.eca_basic import  calc_time_evolution_eca, _make_lut_numba, _make_rotated_lut_numba
 from src.graphics.graphic_lut import _make_rotated_coordinate
-from src.graphics.graphic_param_region import graphic_pr, match_rate
+from src.graphics.graphic_param_region import match_rate_get_df
+"""
 
-
-class PRECA:
+class SweepLineGraph:
 
     def __init__(self, params, filename):
 
@@ -67,129 +71,8 @@ class PRECA:
         params = self.params
 
         # variables
-        x = np.arange(0, self.params["N"], 6, dtype=np.int16)
-        y = np.arange(0, self.params["N"], 6, dtype=np.int16)
-
-        xx_mesh, yy_mesh = np.meshgrid(x, y)
-        xx, yy = xx_mesh.flatten(), yy_mesh.flatten()
-        conds_size = xx.size        # initial conditions
-
-        # parameters
-        sT, eT = 300, 500
-        tau1, b1, WE11, WE12, WI11, WI12 = params['tau1'], params['b1'], params['WE11'], params['WE12'], params['WI11'], params['WI12']
-        tau2, b2, WE21, WE22, WI21, WI22 = params['tau2'], params['b2'], params['WE21'], params['WE22'], params['WI21'], params['WI22']
-        N, M, s1, s2, Tc, Tx, Wx, Ty, Wy = params["N"], params["M"], params["s1"], params["s2"], params["Tc"], params["Tx"], params["Wx"], params["Ty"], params["Wy"]
-
-        # store step
-        total_step = int(eT/Tc)+1
-        index_start = int(sT/Tc)
-        store_step = (total_step - index_start) // 100 + 1 if total_step > index_start else 0
-
-        """ bifurcation """
-
-        # Conditions of S, Q
-        bif_S = np.arange(0.20, 0.70, 0.01)
-        bif_Q = np.arange(0.20, 0.70, 0.01)
-
-        num_S = bif_S.size
-        num_Q = bif_Q.size
-
-        # for store results
-        S_hist = np.zeros((num_S, num_Q, conds_size))
-        Q_hist = np.zeros((num_S, num_Q, conds_size))
-        xmax_hist = np.zeros((num_S, num_Q, conds_size))
-        xmin_hist = np.zeros((num_S, num_Q, conds_size))
-
-        """ run simulation """
-        bench_sT = datetime.datetime.now()
-        print(Tx, Ty)
-        print("\n start: ", bench_sT)
-
-        for idx_s in range(num_S):
-
-            for idx_q in range(num_Q):
-
-                Q = bif_Q[idx_q]
-
-                # update relative values
-                if params["param set"] in ["set 1", "set 2", "set 3"]:
-                    b1, b2, WI12 = 0.13 * (1 + Q), 0, 0.5*Q
-
-                else:
-                    b1, b2, WI12 = 0.13*(1-Q), 0.26*Q, 0
-
-                Fin, Gin = _make_lut_numba(N, M, s1, s2, Tx, Wx, Ty, Wy,
-                                        tau1, b1, bif_S[idx_s], WE11, WE12, WI11, WI12,
-                                        tau2, b2, WE21, WE22, WI21, WI22)
-
-                x_max, x_min = self.calc_parameter_region(xx, yy, 0, 0, 0, 0,
-                                                          N, M, Tc, Tx, Wx, Ty, Wy,
-                                                          total_step, index_start, store_step, Fin, Gin)
-
-                S_hist[idx_s, idx_q, :] = bif_S[idx_s]
-                Q_hist[idx_s, idx_q, :] = Q
-                xmax_hist[idx_s, idx_q, :] = x_max
-                xmin_hist[idx_s, idx_q, :] = x_min
-
-                print("proccess: -*-*-*-*- ", round(((idx_s*num_S + idx_q)/ num_S/num_Q *100),  2), "% -*-*-*-*- ")
-
-        bench_eT = datetime.datetime.now()
-
-        print("end: ", bench_eT)
-        print("bench mark: ", bench_eT - bench_sT)
-        print(Tx, Ty)
-
-
-        """ analysis state in (Q, S) """
-        result_list=[]
-
-        for idx_s in range(num_S):
-            for idx_q in range(num_Q):
-                result = self.analyze_results(bif_Q[idx_q], bif_S[idx_s], xmax_hist[idx_s, idx_q, :], xmin_hist[idx_s, idx_q, :])
-                result_list.append(result)
-
-        """ Store results as a DataFrame """
-
-        # make dataframe
-        df = pd.DataFrame(result_list)
-
-        # specify column order
-        df = df[["Q", "S", "max_1", "max_2", "max_3",
-                 "min_1", "min_2", "min_3", "state"]]
-
-        """ Save to CSV """
-
-        try:
-            df.to_csv(self.filename, index=False)
-            print(f"Results saved to {self.filename}")
-        except Exception as e:
-            print(f"Error saving results to {self.filename}: {e}")
-
-        """ output """
-        if params["param set"] in ["set 1", "set 2", "set 3"]:
-
-            path_1 = r"c:\Storage\02_paper\04_2025_Nolta journal\04_Python\data\results\set 1\forward euler\results\parameter region\20260112155128.csv"
-            path_2 = self.filename
-        else:
-
-            path_1 = r"c:\Storage\02_paper\04_2025_Nolta journal\04_Python\data\results\set 2\forward euler\results\parameter region\20260112160036.csv"
-            path_2 = self.filename
-        
-        graphic_pr(path_2)
-        match_rate(path_1, path_2)
-
-
-
-    def run_rotated(self):
-
-        """ Initialization """
-
-        # get params
-        params = self.params
-
-        # variables
-        x = np.arange(0, self.params["N"], 6, dtype=np.int16)
-        y = np.arange(0, self.params["N"], 6, dtype=np.int16)
+        x = np.arange(0, self.params["N"], 8, dtype=np.int16)
+        y = np.arange(0, self.params["N"], 8, dtype=np.int16)
 
         xx_mesh, yy_mesh = np.meshgrid(x, y)
         xx, yy = xx_mesh.flatten(), yy_mesh.flatten()
@@ -222,91 +105,89 @@ class PRECA:
         xmax_hist = np.zeros((num_S, num_Q, conds_size))
         xmin_hist = np.zeros((num_S, num_Q, conds_size))
 
+
         """ run simulation """
         bench_sT = datetime.datetime.now()
-        print(Tx, Ty)
         print("\n start: ", bench_sT)
 
-        rotated_x, rotated_y =_make_rotated_coordinate(N, deg) # (size, degree)
+        if params["param set"] == "set 1":
+            ode_file_path = r"c:\Storage\02_paper\04_2025_Nolta journal\04_Python\data\results\set 1\forward euler\results\parameter region\20260216000243.csv"
+        elif params["param set"] == "set 2":
+            ode_file_path = r"c:\Storage\02_paper\04_2025_Nolta journal\04_Python\data\results\set 2\forward euler\results\parameter region\20260216000431.csv"
 
-        for idx_s in range(num_S):
 
-            for idx_q in range(num_Q):
+        """ store TxTy result """
+        result_txty = []
 
-                Q = bif_Q[idx_q]
+        # config
+        sitr = 0
+        eitr = 2
 
-                # update relative values
-                if params["param set"] in ["set 1", "set 2", "set 3"]:
-                    b1, b2, WI12 = 0.13 * (1 + Q), 0, 0.5*Q
+        for _deg in range(sitr, eitr, 1):
 
-                else:
-                    b1, b2, WI12 = 0.13*(1-Q), 0.26*Q, 0
+            deg = _deg
+            rotated_x, rotated_y =_make_rotated_coordinate(N, deg) # (size, degree)
 
-                Fin, Gin = _make_rotated_lut_numba(N, M, s1, s2, Tx, Wx, Ty, Wy,
-                                        tau1, b1, bif_S[idx_s], WE11, WE12, WI11, WI12,
-                                        tau2, b2, WE21, WE22, WI21, WI22,
-                                        rotated_x, rotated_y, deg)
+            for delta_x in range(1, 10, 1):
 
-                x_max, x_min = self.calc_parameter_region(xx, yy, 0, 0, 0, 0,
-                                                          N, M, Tc, Tx, Wx, Ty, Wy,
-                                                          total_step, index_start, store_step, Fin, Gin)
+                for delta_y in range(1, 10, 1):
+                    
+                    Wx = Tx * 0.1*delta_x
+                    Wy = Ty * 0.1*delta_y
 
-                S_hist[idx_s, idx_q, :] = bif_S[idx_s]
-                Q_hist[idx_s, idx_q, :] = Q
-                xmax_hist[idx_s, idx_q, :] = x_max
-                xmin_hist[idx_s, idx_q, :] = x_min
+                    result_list=[]
 
-                print("proccess: -*-*-*-*- ", round(((idx_s*num_S + idx_q)/ num_S/num_Q *100),  2), "% -*-*-*-*- ")
+                    for idx_s in range(num_S):
+
+                        for idx_q in range(num_Q):
+
+                            Q = bif_Q[idx_q]
+
+                            # update relative values
+                            if params["param set"] in ["set 1", "set 2", "set 3"]:
+                                b1, b2, WI12 = 0.13 * (1 + Q), 0, 0.5*Q
+
+                            else:
+                                b1, b2, WI12 = 0.13*(1-Q), 0.26*Q, 0
+
+                            Fin, Gin = _make_rotated_lut_numba(N, M, s1, s2, Tx, Wx, Ty, Wy,
+                                                    tau1, b1, bif_S[idx_s], WE11, WE12, WI11, WI12,
+                                                    tau2, b2, WE21, WE22, WI21, WI22,
+                                                    rotated_x, rotated_y, deg)
+
+                            x_max, x_min = self.calc_parameter_region(xx, yy, 0, 0, 0, 0,
+                                                                    N, M, Tc, Tx, Wx, Ty, Wy,
+                                                                    total_step, index_start, store_step, Fin, Gin)
+
+                            S_hist[idx_s, idx_q, :] = bif_S[idx_s]
+                            Q_hist[idx_s, idx_q, :] = Q
+                            xmax_hist[idx_s, idx_q, :] = x_max
+                            xmin_hist[idx_s, idx_q, :] = x_min
+                            
+                            result = self.analyze_results(bif_Q[idx_q], bif_S[idx_s], xmax_hist[idx_s, idx_q, :], xmin_hist[idx_s, idx_q, :])
+                            result_list.append(result)
+
+                    df = pd.DataFrame(result_list)
+
+                    df = df[["Q", "S", "max_1", "max_2", "max_3",
+                    "min_1", "min_2", "min_3", "state"]]
+
+                    rate = match_rate_get_df(ode_file_path, df)
+                    print("theta=", deg, "delta_X=", delta_x, ", delta_Y=", delta_y, ", rate: ", f"{rate*100:.6f}")
+                    result_txty.append([deg, delta_x, delta_y, rate*100, max(rate*100-90,0)])
+
 
         bench_eT = datetime.datetime.now()
 
         print("end: ", bench_eT)
         print("bench mark: ", bench_eT - bench_sT)
-        print(Tx, Ty)
 
+        ddf = pd.DataFrame(result_txty, columns=["deg", "delta_X", "delta_Y", "res1", "res2"])
 
-        """ analysis state in (Q, S) """
-        result_list=[]
+        save_path = os.path.join(os.path.dirname(self.filename), f"results_{sitr}--{eitr-1}.csv")
+        ddf.to_csv(save_path, index=False, encoding='utf-8')
+        print(f"Results saved to: {save_path}")
 
-        for idx_s in range(num_S):
-            for idx_q in range(num_Q):
-                result = self.analyze_results(bif_Q[idx_q], bif_S[idx_s], xmax_hist[idx_s, idx_q, :], xmin_hist[idx_s, idx_q, :])
-                result_list.append(result)
-
-        """ Store results as a DataFrame """
-
-        # make dataframe
-        df = pd.DataFrame(result_list)
-
-        # specify column order
-        df = df[["Q", "S", "max_1", "max_2", "max_3",
-                 "min_1", "min_2", "min_3", "state"]]
-
-        """ Save to CSV """
-
-        try:
-            df.to_csv(self.filename, index=False)
-            print(f"Results saved to {self.filename}")
-        except Exception as e:
-            print(f"Error saving results to {self.filename}: {e}")
-
-        """ output """
-        if params["param set"] in ["set 1"]:
-
-            path_1 = r"c:\Storage\02_paper\04_2025_Nolta journal\04_Python\data\results\set 1\forward euler\results\parameter region\20260112155128.csv"
-            path_2 = self.filename
-
-            graphic_pr(path_2)
-            match_rate(path_1, path_2)
-        elif params["param set"] in ["set 2"]:
-
-            path_1 = r"c:\Storage\02_paper\04_2025_Nolta journal\04_Python\data\results\set 2\forward euler\results\parameter region\20260112160036.csv"
-            path_2 = self.filename
-
-            graphic_pr(path_2)
-            match_rate(path_1, path_2)
-
-        else: pass
 
 
     @staticmethod
@@ -481,3 +362,82 @@ class PRECA:
         }
 
         return result
+
+
+
+""" For graphic """
+
+def plot_combined_results(csv_paths, output_dir):
+    """
+    複数のCSVファイルを結合して、delta_X, delta_Yごとの折れ線グラフを描画
+
+    Parameters
+    ----------
+    csv_paths : list of str
+        読み込むCSVファイルのパスのリスト
+    output_dir : str
+        グラフの保存先ディレクトリ
+    """
+    
+    # 複数のCSVファイルを結合
+    df_list = []
+    for path in csv_paths:
+        df = pd.read_csv(path, encoding='utf-8')
+        df_list.append(df)
+    
+    combined_df = pd.concat(df_list, ignore_index=True)
+    
+    # delta_X, delta_Yのユニークな組み合わせを取得
+    delta_combinations = combined_df[['delta_X', 'delta_Y']].drop_duplicates().sort_values(['delta_X', 'delta_Y'])
+    
+    # 出力ディレクトリの作成
+    os.makedirs(output_dir, exist_ok=True)
+    
+    # 各delta_X, delta_Yの組み合わせごとにグラフを作成
+    for idx, row in delta_combinations.iterrows():
+        delta_x = row['delta_X']
+        delta_y = row['delta_Y']
+        
+        # 該当データを抽出
+        subset = combined_df[(combined_df['delta_X'] == delta_x) & 
+                            (combined_df['delta_Y'] == delta_y)].sort_values('deg')
+        
+        # グラフ作成
+        plt.figure(figsize=(10, 6))
+        plt.plot(subset['deg'], subset['res1'], marker='o', linewidth=2, markersize=6)
+        plt.xlabel('theta (deg)', fontsize=12)
+        plt.ylabel('res1 (%)', fontsize=12)
+        plt.title(f'delta_X={delta_x}, delta_Y={delta_y}', fontsize=14)
+        plt.grid(True, alpha=0.3)
+        plt.tight_layout()
+        
+        # 保存
+        save_path = os.path.join(output_dir, f'line_graph_dX{delta_x}_dY{delta_y}.png')
+        plt.savefig(save_path, dpi=150)
+        plt.close()
+        
+        print(f"Saved: {save_path}")
+    
+    print(f"\nAll graphs saved to: {output_dir}")
+    
+    # 結合したデータも保存
+    combined_csv_path = os.path.join(output_dir, 'combined_results.csv')
+    combined_df.to_csv(combined_csv_path, index=False, encoding='utf-8')
+    print(f"Combined data saved to: {combined_csv_path}")
+
+
+if __name__ == "__main__":
+    
+    # 読み込むCSVファイルのパスを指定
+    csv_paths = [
+        r"c:\Storage\02_paper\04_2025_Nolta journal\04_Python\data\results\set 1\rotated-LUT CA\results\Scheduled Analysis\results_0--1.csv",
+        #r"c:\path\to\result_txty_2.csv",
+        #r"c:\path\to\result_txty_3.csv",
+        # 必要に応じて追加
+    ]
+    
+    # グラフの出力先ディレクトリ
+    output_dir = r"c:\path\to\output\line_graphs"
+    
+    # 折れ線グラフを生成
+    plot_combined_results(csv_paths, output_dir)
