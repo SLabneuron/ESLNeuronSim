@@ -1,21 +1,26 @@
-# BCSwitch
+# ESL neruon simulator
 
-## 1. The Goal of the Planning  
-The Goal of the planning is to submit to ELEX (IEICE Electronics Express) or CAS1 (IEEE Transaction on Circuits and Systems Ⅰ).  
-To achieve this goal, the following targets are needed to be completed:  
-1. Theoretical Analysis  
-2. Development of Efficient Searching Algorithms  
+## 1. The Obejectives
 
-## 2. Environment  
-Python 3.11  
+The objectives of this study are following:
+1. Reproduction of HR neruon
+2. Analyses of HR neuron
+3. Experiment of networking HR neruon
 
-## 3. History  
-2023-11-28: Creation of the Repository  
-2023-12-01: Creation of the SLabBCSwitch.py  
-2023-12-15: Creation of the file generator  
 
-## 4. Development Planning
-・Update the file organization
+## 2. Environment
+Python 3.11.5
+
+
+## 3. Required library
+- matplotlib
+- numpy
+- numba
+- pandas
+
+## 4. History
+2026-02-18: Create this repository
+
 
 ## Other
 updates
