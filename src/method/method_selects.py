@@ -57,20 +57,10 @@ from src.method.eca.eca_basic import calc_time_evolution_eca, _make_lut_numba, _
 from src.graphics.graphic_lut import _make_rotated_coordinate
 
 
-from src.method.euler.ode_attraction_basin import ABODE
-from src.method.eca.eca_attraction_basin import ABECA
-
 from src.method.euler.ode_bif import BifODE
 from src.method.eca.eca_bif import BifECA
 
-from src.method.euler.ode_parameter_rigions import PRODE
-from src.method.eca.eca_parameter_regions import PRECA
 
-from src.method.eca.eca_return_map import EcaReMap
-
-from src.method.eca.eca_sweep_TxTy import TxTyECA
-from src.method.eca.eca_sweep_theta import SweepThetaECA
-from src.method.eca.eca_sweep_graph import SweepLineGraph
 
 from src.method.eca.eca_lut import make_lut_for_verilog
 
@@ -98,119 +88,46 @@ class MethodSelects:
 
     def sim_ode(self, sim_type):
 
-        # Local Analyses
-
-        if sim_type == "time evolution":
+        if sim_type == "time evolution (single)":
             self.time_evolution_ode()
 
-        elif sim_type == "attraction basin":
-            self.master.results_ab = ABODE(self.master, self.file_name)
-            self.master.results_ab.run()
+        elif sim_type == "time evolution (network)":
+            self.time_evolution_ode()
 
-        # Global Analyses
-
-        elif sim_type == "bifurcation":
+        elif sim_type == "bifurcation (single)":
             self.master.results_bif = BifODE(self.master.params, self.file_name)
             self.master.results_bif.run()
 
-        elif sim_type == "parameter region":
-            self.master.results_pr = PRODE(self.master.params, self.file_name)
-            self.master.results_pr.run()
+        elif sim_type == "bifurcation (network)":
+            self.master.results_bif = BifODE(self.master.params, self.file_name)
+            self.master.results_bif.run()
 
-        elif sim_type == "ReturnMap":
-            print("This function is not supported.")
-
-        elif sim_type == "lut":
-            print("Please select ErCA or SynCA")
         else:
             print("not implemented")
 
 
-    def sim_ca(self, sim_type):
-        
-        print(self.master.params["Tx"], self.master.params["Ty"])
+    def sim_eca(self, sim_type):
 
-        # Local Analyses
-
-        if sim_type == "time evolution":
+        if sim_type == "time evolution (single)":
             self.time_evolution_ca()
 
-        elif sim_type == "attraction basin":
-            self.master.results_ab = ABECA(self.master, self.file_name)
-            self.master.results_ab.run()
+        elif sim_type == "time evolution (network)":
+            self.time_evolution_ca()
 
-        elif sim_type == "ReturnMap":
-            results_ReMap = EcaReMap(self.master, self.file_name)
-
-        # Global Analyses
-
-        elif sim_type == "bifurcation":
+        elif sim_type == "bifurcation (single)":
             self.master.results_bif = BifECA(self.master.params, self.file_name)
             self.master.results_bif.run()
 
-        elif sim_type == "parameter region":
-            self.master.results_pr = PRECA(self.master.params, self.file_name)
-            self.master.results_pr.run()
-
-        elif sim_type == "TxTysweep":
-            self.master.result_txtysweep = TxTyECA(self.master.params, self.file_name)
-            self.master.result_txtysweep.run()
-        
-        elif sim_type == "Scheduled Analysis":
-            self.master.result_scheduled = SweepLineGraph(self.master.params, self.file_name)
-            self.master.result_scheduled.run()
+        elif sim_type == "bifurcation (network)":
+            self.master.results_bif = BifECA(self.master.params, self.file_name)
+            self.master.results_bif.run()
 
         elif sim_type == "Output LUT":
 
             make_lut_for_verilog(self.master.params, self.file_name, "normal")
 
-
         else:
             print("not implemented")
-
-
-    def sim_rotated_lut_ca(self, sim_type):
-
-        # Local Analyses
-
-        if sim_type == "time evolution":
-            func = self.time_evolution_ca_with_rotated_lut
-            func()
-
-        elif sim_type == "attraction basin":
-            self.master.results_ab = ABECA(self.master, self.file_name)
-            self.master.results_ab.run()
-
-        elif sim_type == "ReturnMap":
-            results_ReMap = EcaReMap(self.master, self.file_name)
-
-        # Global Analyses
-
-        elif sim_type == "bifurcation":
-            self.master.results_bif = BifECA(self.master.params, self.file_name)
-            self.master.results_bif.run_rotated()
-
-        elif sim_type == "parameter region":
-            self.master.results_pr = PRECA(self.master.params, self.file_name)
-            self.master.results_pr.run_rotated()
-
-        elif sim_type == "TxTysweep":
-            self.master.result_txtysweep = TxTyECA(self.master.params, self.file_name)
-            self.master.result_txtysweep.run_rotated()
-
-        elif sim_type == "TxTheta_sweep":
-            self.master.result_tythetasweep = SweepThetaECA(self.master.params, self.file_name)
-            self.master.result_tythetasweep.run_Tx()
-
-        elif sim_type == "Scheduled Analysis":
-            self.master.result_scheduled = SweepLineGraph(self.master.params, self.file_name)
-            self.master.result_scheduled.run()
-
-        elif sim_type == "Output LUT":
-
-            make_lut_for_verilog(self.master.params, self.file_name, "rotated")
-
-
 
 
 
@@ -222,30 +139,36 @@ class MethodSelects:
         params = self.master.params
 
         # variables
-        init_x, init_y = np.float32(params["init_x"]), np.float32(params["init_y"])
+        init_x, init_y, init_z = np.float32(params["init_x"]), np.float32(params["init_y"]), np.float32(params["init_z"])
 
         # time
         sT, eT, h = params["sT"], params["eT"], params["h"]
 
         # params (fx)
-        tau1, b1, S, WE11, WE12, WI11, WI12 = params['tau1'], params['b1'], params['S'], params['WE11'], params['WE12'], params['WI11'], params['WI12']
+        a, b, c, d, r, s = params['a'], params['b'], params['c'], params['d'], params['r'], params['s']
 
-        # params (fy)
-        tau2, b2, WE21, WE22, WI21, WI22 = params['tau2'], params['b2'], params['WE21'], params['WE22'], params['WI21'], params['WI22']
+
+        p = (d - b) / a
+        q = c / a
+
+        coef = [1, p, 0, -q]   # x^3 + p x^2 - q = 0
+        x_1 = np.roots(coef)[0]
 
         # store step
         total_step = int(eT/h)+1
         index_start = int(sT/h)
         store_step = (total_step - index_start) // 100 + 1 if total_step > index_start else 0
 
+        # input I
+        I = np.zeros(total_step)
+
         bench_sT = datetime.datetime.now()
         t0 = time.perf_counter()
         print("\n start: ", bench_sT)
 
         # set calode
-        t_hist, x_hist, y_hist = calc_time_evolution_ode(init_x, init_y, h,
-                                                         tau1, b1, S, WE11, WE12, WI11, WI12,
-                                                         tau2, b2, WE21, WE22, WI21, WI22,
+        t_hist, x_hist, y_hist = calc_time_evolution_ode(init_x, init_y, init_z, h,
+                                                         a, b, c, d, r, s, x_1, I,
                                                          total_step, index_start, store_step)
 
         bench_eT = datetime.datetime.now()
