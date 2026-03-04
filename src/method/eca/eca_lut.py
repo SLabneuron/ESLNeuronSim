@@ -2,7 +2,7 @@
 
 
 import numpy as np
-from src.method.eca.eca_basic import _make_lut_numba, _make_rotated_lut_numba
+from src.method.eca.eca_basic import _make_lut_numba
 from src.graphics.graphic_lut import _make_rotated_coordinate
 
 
@@ -28,13 +28,8 @@ def make_lut_for_verilog(params, filename, mode):
     rotated_x, rotated_y =_make_rotated_coordinate(N, deg) # (size, degree)
 
 
-    if mode == "rotated":
-        F, G = _make_rotated_lut_numba(N, M, s1, s2, gamma_X, gamma_Y, Tc, Tx, Ty,
-                                       tau1, b1, S, WE11, WE12, WI11, WI12,
-                                       tau2, b2, WE21, WE22, WI21, WI22,
-                                       rotated_x, rotated_y, deg)
-    else:
-        F, G = _make_lut_numba(N, M, s1, s2, gamma_X, gamma_Y, Tc, Tx, Ty,
+
+    F, G, H = _make_lut_numba(N, M, s1, s2, gamma_X, gamma_Y, Tc, Tx, Ty,
                                tau1, b1, S, WE11, WE12, WI11, WI12,
                                tau2, b2, WE21, WE22, WI21, WI22)
 

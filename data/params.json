@@ -1,119 +1,93 @@
 {
 
     "bifurcation params":{
-
-        "Q": 0.5,
-        "S" : 0.5
+        "I_ext" : 2,
+        "g_s": 0.4
     },
 
-    "set 1":{
+    "parameters":{
 
-        "tau1": 1,
-        "tau2": 1,
-        "b1_equ": "lambda Q=self.params['Q']: 0.13 * (1 + Q)",
-        "b2_equ": "lambda :0",
-        "WE11": 3.9,
-        "WE12": 0,
-        "WE21": 3.0,
-        "WE22": 3.0,
-        "WI11": 0,
-        "WI12_equ": "lambda Q=self.params['Q']: 0.5 * Q",
-        "WI21": 0,
-        "WI22": 0
-    },
+        "a" : 1,
+        "b" : 3,
+        "c" : 1,
+        "d" : 5,
+        "r" : 0.001,
+        "s" : 4
 
-    "set 2":{
-
-        "tau1": 1,
-        "tau2": 10,
-        "b1_equ": "lambda Q=self.params['Q']: 0.13 * (1 + Q)",
-        "b2_equ": "lambda: 0",
-        "WE11": 3.9,
-        "WE12": 0,
-        "WE21": 3.0,
-        "WE22": 3.0,
-        "WI11": 0,
-        "WI12_equ": "lambda Q=self.params['Q']: 0.5 * Q",
-        "WI21": 0,
-        "WI22": 0
-    },
-
-    "set 3":{
-
-        "tau1": 1,
-        "tau2": 1,
-        "b1_equ": "lambda Q=self.params['Q']: 0.13 * (1 + Q)",
-        "b2_equ": "lambda :0",
-        "WE11": 3.9,
-        "WE12": 0,
-        "WE21": 1,
-        "WE22": 3.8,
-        "WI11": 0,
-        "WI12_equ": "lambda Q=self.params['Q']: 0.5 * Q",
-        "WI21": 0,
-        "WI22": 0
-    },
-
-    "set 4":{
-
-        "tau1": 1,
-        "tau2": 1,
-        "b1_equ": "lambda Q=self.params['Q']: 0.13 * (1 - Q)",
-        "b2_equ": "lambda Q=self.params['Q']: 0.26 * Q",
-        "WE11": 3.9,
-        "WE12": 0.6,
-        "WE21": 0,
-        "WE22": 4.2,
-        "WI11": 0,
-        "WI12_equ": "lambda: 0",
-        "WI21": 1,
-        "WI22": 0
     },
 
 
-    "CA set":{
+    "coupling":{
+
+        "V_s": 2.0,
+        "Theta": -0.25,
+        "gamma": 10
+
+    },
+
+
+    "SL set":{
         "init_X": 24,
-        "init_Y": 32,
+        "init_Y": 0,
+        "init_Z": 0,
         "init_P": 0,
         "init_Q": 0,
+        "init_R": 0,
         "init_phX": 0,
-        "init_phY": 0
+        "init_phY": 0,
+        "init_phZ": 0
     },
 
-    "CA params":{
 
+    "SL params":{
 
-        "Ns": 6,
+        "N1_s": 6,
+        "N2_s": 6,
+        "N3_s": 6,
         "Ms": 6,
-        "s1_s": 6,
-        "s2_s": 6,
-        "N": 64,
+        "s1_s": 4,
+        "s2_s": 2,
+        "s3_s": 5,
+
+        "N1": 64,
+        "N2": 64,
+        "N3": 64,
         "M": 64,
-        "s1": 64,
-        "s2": 64,
-        "Tc": 0.01,
-        "Tx_rat": 0.04,
+        "s1": 16,
+        "s2": 4,
+        "s3": 16,
+
+        "Tc": 0.001,
+
+        "Tx_rat": 0.002,
         "Tx_sqrt": 2,
-        "Wx_rat": 0.02,
+        "Wx_rat": 0.000031,
         "Wx_sqrt": 2,
-        "Ty_rat": 0.06,
+
+        "Ty_rat": 0.005,
         "Ty_sqrt": 3,
-        "Wy_rat": 0.04,
+        "Wy_rat": 0.000055,
         "Wy_sqrt": 3,
-        "deg": 1
+
+        "Tz_rat": 0.840,
+        "Tz_sqrt": 7,
+        "Wz_rat": 0.000145,
+        "Wz_sqrt": 5
     },
 
-    "NI set":{
 
-        "init_x" : 0.5,
-        "init_y" : 0.3,
-        "h" : 0.01
+    "ODE set":{
+
+        "init_x" : -2.0,
+        "init_y" : 0,
+        "init_z" : 0,
+        "h" : 0.001
     },
 
     "sim params":{
 
-        "sT": 400,
-        "eT": 700
+        "sT": 0,
+        "eT": 6000
     }
 
 

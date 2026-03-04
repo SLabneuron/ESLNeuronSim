@@ -3,7 +3,7 @@
 """
 
 Created on: 2023-11-30
-Updated on: 2024-10-22
+Updated on: 2026-02-26
 
 @author: SLab
 
@@ -22,9 +22,8 @@ import sys
 
 
 # import local libralies
-from src.ui_config.frame_settings import SimSettings
-from src.ui_config.frame_sys_overview import SysOverview
-from src.ui_config.frame_results import TimeEvol
+from src.ui_config.frame_settings import ControlPanel
+from src.ui_config.frame_results import ResultPanel
 
 from src.method.method_selects import MethodSelects
 
@@ -44,94 +43,25 @@ class WindowSetup:
         self.axes = {}
         self.tables = {}
 
-        self.string_var = {}
+        self.string_var = {}            # entry
+        self.power_labels = {}          # entry
+
         self.toggle_widgets = {}  # For store init frame widgets
 
         self.results = None
-        self.results_ab = None
-        self.results_bif = None
-        self.results_pr = None
 
         self.set_widget()
 
 
     def set_widget(self):
 
-        # set (row, col) = (0:1, 0)
-        self.sim_settings = SimSettings(self)
+        # set (row, col) = (0, 0) > Left Panel
+        self.settings = ControlPanel(self)
 
-        # set (row, col) = (0, 1)
-        self.sys_overview = SysOverview(self)
+        # set (row, col) = (0, 1) > Right Panel
+        self.results = ResultPanel(self)
 
-        # set (row, col) = (1, 1)
-        self.time_evol =TimeEvol(self)
-
-        self.event_bindings()
-
-
-    def event_bindings(self):
-
-        def update():
-
-            # update parameter
-            self.parameter_update()
-
-            # update graphics
-            self.sys_overview.update_display()
-            self.time_evol.update_graphics()
-
-            # Plot: Results time evolution
-            self.run_simulation
-
-        self.combos["model"].bind("<<ComboboxSelected>>", lambda e: update(), add="+")
-        self.combos["param set"].bind("<<ComboboxSelected>>", lambda e: update(), add="+")
-
-        for key, item in self.entries.items():
-
-            if isinstance(item, ttk.Entry):
-
-                self.entries[key].bind("<Return>", lambda e: update(), add="+")
-
-
-        # Init graphics
-        update()
-
-
-
-    def parameter_update(self):
-
-        """ Parameter update """
-
-        # update entries
-        for param in self.entries:
-
-            widget = self.entries[param]
-
-            self.params[param] = float(widget.get())
-
-        for param in self.string_var:
-
-            widget = self.string_var[param]
-
-            self.params[param]
-
-        # update combos
-        for param in self.combos:
-
-            widget = self.combos[param].get()
-
-            self.params[param] = widget
-
-        # calculate Tx, Ty
-        self.params["Tx"] = self.params["Tx_rat"] * self.params["Tx_sqrt"] ** (1/2)
-        self.params["Ty"] = self.params["Ty_rat"] * self.params["Ty_sqrt"] ** (1/2)
-        self.params["Wx"] = self.params["Wx_rat"] * self.params["Wx_sqrt"] ** (1/2)
-        self.params["Wy"] = self.params["Wy_rat"] * self.params["Wy_sqrt"] ** (1/2)
-
-        # resolve lambda equ
-        self.params["b1"] = eval(self.params["b1_equ"])()
-        self.params["b2"] = eval(self.params["b2_equ"])()
-        self.params["WI12"] = eval(self.params["WI12_equ"])()
+        self.results.event_bindings()
 
 
     def run_simulation(self):
@@ -147,6 +77,33 @@ class WindowSetup:
         MethodSelects(self)
 
         # 4. Plot
-        self.time_evol.update_graphics()
+        self.results.update_graphics()
 
-        print("Complete Simulation", datetime.datetime.now(), "\n\n")
+
+    def parameter_update(self):
+
+        """ Parameter update """
+
+        self.params["model"] = self.combos["model"].get()
+        self.params["simulation"] = self.combos["simulation"].get()
+
+        # update entries
+        for param in self.entries:
+
+            widget = self.entries[param]
+
+            self.params[param] = float(widget.get())
+
+        for param in self.string_var:
+
+            widget = self.string_var[param]
+
+            self.params[param] = widget
+
+        # calculate Tx, Ty, Tz
+        self.params["Tx"] = self.params["Tx_rat"] * self.params["Tx_sqrt"] ** (1/2)
+        self.params["Ty"] = self.params["Ty_rat"] * self.params["Ty_sqrt"] ** (1/2)
+        self.params["Tz"] = self.params["Tz_rat"] * self.params["Tz_sqrt"] ** (1/2)
+        self.params["Wx"] = self.params["Wx_rat"] * self.params["Wx_sqrt"] ** (1/2)
+        self.params["Wy"] = self.params["Wy_rat"] * self.params["Wy_sqrt"] ** (1/2)
+        self.params["Wz"] = self.params["Wz_rat"] * self.params["Wz_sqrt"] ** (1/2)

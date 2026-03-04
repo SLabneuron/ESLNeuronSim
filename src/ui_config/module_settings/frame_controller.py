@@ -5,7 +5,8 @@ Title: frame_settings > controller setting
 
 @author: shirafujilab
 
-Created: 2024-11-14
+Created on: 2024-11-14
+Updated on: 2026-02-26
 
 Contents:
 
@@ -19,15 +20,13 @@ Return:
 
     - master.combos["model"]
 
-        fem, SynCA, ErCA
+        ode, esl
 
     - master.combos["simulation"]
 
         time evolution
         bifurcation
-        parameter region
-        attraction basin
-        Poincare map (return map)
+
 
 """
 
@@ -70,15 +69,15 @@ class FrControl:
 
             selected_value = combo0.get()
 
-            if selected_value in ["forward euler"]:
-                self.toggle_widgets("fr_ni")
+            if selected_value in ["ode"]:
+                self.toggle_widgets("fr_ode")
             else:
-                self.toggle_widgets("fr_ca")
+                self.toggle_widgets("fr_esl")
 
-        combo0_value = ["forward euler", "ergodic CA", "synchronuus CA", "rotated-LUT CA"]
-        combo0 = ttk.Combobox(fr, values=combo0_value, width=15)
+        combo0_value = ["ode", "esl"]
+        combo0 = ttk.Combobox(fr, values=combo0_value, width=20)
         combo0.grid(row=0, column=1, padx=2, pady=2)
-        combo0.set("ergodic CA")  # Default value
+        combo0.set("esl")  # Default value
         combo0.bind("<<ComboboxSelected>>", on_combobox_select)
         self.master.combos["model"] = combo0
 
@@ -88,24 +87,18 @@ class FrControl:
         text1 = ttk.Label(fr, text="Simulation:", style="Custom1.TLabel")
         text1.grid(row=1, column=0, padx=2, pady=2, sticky=tk.W)
 
-        combo1_value = ["time evolution",
-                        "bifurcation",
-                        "parameter region",
-                        "attraction basin",
-                        "ReturnMap",
-                        "TxTysweep",
-                        "TxTheta_sweep",
-                        "Scheduled Analysis",
+        combo1_value = ["time evolution (single)",
+                        "time evolution (network)",
+                        "bifurcation (single)",
+                        "bifurcation (network)",
                         "Output LUT"]
-        combo1 = ttk.Combobox(fr, values=combo1_value, width=15)
+
+        combo1 = ttk.Combobox(fr, values=combo1_value, width=20)
         combo1.grid(row=1, column=1, padx=2, pady=2)
-        combo1.set("time evolution")  # Default value
+        combo1.set("time evolution (single)")  # Default value
         self.master.combos["simulation"] = combo1
 
         # execute button
-        #text2 = ttk.Label(fr, text="Run", style="Custom1.TLabel")
-        #text2.grid(row=0, column=2, padx=2, pady=2)
-
         button1 = ttk.Button(fr, text="▶", command=self.master.run_simulation)
         button1.grid(row=0, column=2, rowspan=2, padx=8, pady=2)
 

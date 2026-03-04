@@ -2,29 +2,14 @@
 
 """
 
-
 Created on: 2024-10-18
+Updated on: 2026-02-26
 
 @author: SLab
 
 Contents:
 
-    Controller
 
-        - Model
-        - Simulation
-        - Execute
-
-    Init variables
-
-        - for ODE (x, y, h)
-        - for CA (X, Y, P, Q)
-
-    Parameters
-
-        - Bifurcation Parameters (Q, S)
-        - CA Parameters (N, M, s1, s2, Tc, Tx, Ty)
-        - Simulation Parameter (sT, eT)
 
 """
 
@@ -36,7 +21,7 @@ from src.ui_config.module_settings.frame_controller import FrControl
 from src.ui_config.module_settings.frame_init_frame import FrInit
 from src.ui_config.module_settings.frame_param_config import FrParamConfig
 
-class SimSettings:
+class ControlPanel:
 
     def __init__(self, master):
 
@@ -69,9 +54,9 @@ class SimSettings:
         row_frame2.grid(row=2, column=0, padx=2, pady=2)
 
         # ColumnConfig
-        row_frame0.columnconfigure(0, minsize=300)
-        row_frame1.columnconfigure(0, minsize=300)
-        row_frame2.columnconfigure(0, minsize=300)
+        row_frame0.columnconfigure(0, minsize=350)
+        row_frame1.columnconfigure(0, minsize=350)
+        row_frame2.columnconfigure(0, minsize=350)
 
         """ Setting Frames """
 

@@ -34,7 +34,7 @@ from numba import njit, prange
 import datetime, time
 
 # import my library
-from src.method.eca.eca_basic import  calc_time_evolution_eca, _make_lut_numba, _make_rotated_lut_numba
+from src.method.eca.eca_basic import  calc_time_evolution_eca, _make_lut_numba
 from src.graphics.graphic_lut import _make_rotated_coordinate
 
 

@@ -16,8 +16,6 @@ Contents:
 
 import tkinter as tk
 from tkinter import ttk
-import os
-import pandas as pd
 
 import matplotlib.pyplot as plt
 
@@ -43,10 +41,10 @@ class ControlPanel:
     def root_config(self):
 
         # title
-        self.root.title("ESL Simulator, biochemical switch")
+        self.root.title("ESL Simulator, HR neuron")
 
         # main size
-        self.root.geometry("1040x720")
+        self.root.geometry("820x600")
 
         # style
         style = ttk.Style()
@@ -86,11 +84,12 @@ class ControlPanel:
 
         # Parameter Import
         params = json_import(["bifurcation params",
-                                "set 1",
-                                "CA set",
-                                "CA params",
-                                "NI set",
-                                "sim params"])
+                              "parameters",
+                              "coupling",
+                              "SL set",
+                              "SL params",
+                              "ODE set",
+                              "sim params"])
 
         # str equation make available
         resolve_params = param_resolver(params)

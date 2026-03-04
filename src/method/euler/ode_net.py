@@ -22,7 +22,7 @@ import matplotlib.pyplot as plt
 import os
 import datetime, time
 
-class TimeEvolOdeSingle:
+class TimeEvolOdeNetwork:
 
     def __init__(self, params, filename):
 
@@ -66,7 +66,7 @@ class TimeEvolOdeSingle:
         q = c / a
 
         coef = [1, p, 0, -q]   # x^3 + p x^2 - q = 0
-        x_1 = np.roots(coef)[0]
+        x_1 = np.float32(np.roots(coef)[0])
 
         # coupling parameters
         V_s = np.float32(params["V_s"])         # default value (2)
@@ -94,7 +94,7 @@ class TimeEvolOdeSingle:
         print("\n start: ", bench_sT)
 
         # set calode
-        t_hist, x_hist = calc_time_evolution_ode(x, y, z, h,
+        t_hist, x_hist = calc_time_evolution_ode(init_x, init_y, init_z, h,
                                                  a, b, c, d, r, s, x_1, I_ext,
                                                  V_s, Theta, g_s,  gamma, c_ij,
                                                  n, k,
@@ -107,6 +107,8 @@ class TimeEvolOdeSingle:
 
         # Store results
         plot_time_series(t_hist, x_hist)
+        
+        return t_hist, x_hist
 
 
 
@@ -131,12 +133,11 @@ def calc_time_evolution_ode(init_x, init_y, init_z, h,
     x_hist = np.zeros((n, store_step-1), dtype=np.float32)
     I = np.zeros((n), dtype=np.float32)
 
-
     idx = 0
 
     for i in range(total_step):
 
-        # calculate sysnapse input
+        # calculate synapse input
         Gamma = 1.0 / (1.0 + np.exp(-gamma * (x_previous - Theta)))
         Gamma = Gamma.astype(np.float32)
         syn = c_ij @ Gamma      # shape (n,)
@@ -191,7 +192,7 @@ def plot_time_series(t_hist, x_hist):
 if __name__ == "__main__":
 
     # variables
-    x = np.array([-2, -1.8, -1.6, -1.4, -1.2, -1.0, -0.8, -0.6, -0.4], dtype=np.float32)
+    x = np.array([-2, -1.4, -1.1, -0.6, 0, 0.6, 1.1, 1.4, 2], dtype=np.float32)
     y = np.array([0, 0, 0, 0, 0, 0, 0, 0, 0], dtype=np.float32)
     z = np.array([0, 0, 0, 0, 0, 0, 0, 0, 0], dtype=np.float32)
 
@@ -216,20 +217,20 @@ if __name__ == "__main__":
     I_ext = np.float32(2)
 
     # coupling parameters
-    V_s = np.float32(2)         # default value (2)
+    V_s = np.float32(1.4)         # default value (2)
     Theta = np.float32(-0.25)   # default value (-0.25)
-    g_s = np.float32(0.4)         # 0.429
+    g_s = np.float32(0.5)         # 0.429
     gamma = np.float32(10)
 
-    c_ij = np.array([[1, 1, 1, 0, 0, 0, 0, 0, 0],
-                    [0, 0, 0, 1, 1, 1, 0, 0, 0],
-                    [0, 0, 0, 0, 0, 0, 1, 1, 1],
-                    [1, 0, 0, 1, 0, 0, 1, 0, 0],
-                    [0, 1, 0, 0, 1, 0, 0, 1, 0],
-                    [0, 0, 1, 0, 0, 1, 0, 0, 1],
-                    [0, 0, 1, 0, 0, 1, 0, 0, 1],
-                    [0, 1, 0, 0, 1, 0, 0, 1, 0],
-                    [1, 0, 0, 1, 0, 0, 1, 0, 0]], dtype=np.float32)
+    c_ij = np.array([[0, 1, 1, 1, 0, 0, 0, 0, 0],
+                     [0, 0, 0, 0, 1, 1, 1, 0, 0],
+                     [1, 0, 0, 0, 0, 0, 0, 1, 1],
+                     [0, 1, 0, 0, 1, 0, 0, 1, 0],
+                     [0, 0, 1, 0, 0, 1, 0, 0, 1],
+                     [1, 0, 0, 1, 0, 0, 1, 0, 0],
+                     [0, 0, 1, 0, 0, 1, 0, 0, 1],
+                     [0, 1, 0, 0, 1, 0, 1, 0, 0],
+                     [1, 0, 0, 1, 0, 0, 0, 1, 0]], dtype=np.float32)
 
     n = c_ij.shape[0]
     k = np.sum(c_ij[0])
@@ -239,7 +240,7 @@ if __name__ == "__main__":
     # time
     h = np.float32(0.001)
     sT = 000
-    eT = 10000
+    eT = 500
 
     total_step = int(eT/h)+1
     index_start = int(sT/h)

@@ -39,7 +39,7 @@ class TimeEvolOdeSingle:
     def run(self):
 
         params = self.params
-        
+
         """ variables """
         init_x = np.float32(params["init_x"])
         init_y = np.float32(params["init_y"])
@@ -75,9 +75,9 @@ class TimeEvolOdeSingle:
         print("\n start: ", bench_sT)
 
         # set calode
-        t_hist, x_hist = calc_time_evolution_ode(init_x, init_y, init_z, h,
-                                                 a, b, c, d, r, s, x_1, I_ext,
-                                                 total_step, index_start, store_step)
+        t_hist, I_hist, x_hist, y_hist, z_hist = calc_time_evolution_ode(init_x, init_y, init_z, h,
+                                                                         a, b, c, d, r, s, x_1, I_ext,
+                                                                         total_step, index_start, store_step)
 
         bench_eT = datetime.datetime.now()
         t1 = time.perf_counter()
@@ -85,12 +85,14 @@ class TimeEvolOdeSingle:
         print("bench mark: ", t1 - t0)
 
         # Store results
-        plot_time_series(t_hist, I_hist, x_hist, y_hist, z_hist)
+        #plot_time_series(t_hist[:-1], I_hist[:-1], x_hist[:-1], y_hist[:-1], z_hist[:-1])
+        
+        return t_hist[:-1], I_hist[:-1], x_hist[:-1], y_hist[:-1], z_hist[:-1]
 
 
 @njit
 def calc_time_evolution_ode(init_x, init_y, init_z, h,
-                            a, b, c, d, r, s, x_1, I,
+                            a, b, c, d, r, s, x_1, I_ext,
                             total_step, index_start, store_step):
 
     # variables
@@ -113,7 +115,7 @@ def calc_time_evolution_ode(init_x, init_y, init_z, h,
     for i in range(total_step):
 
         # calculate
-        x_next = x_previous + h * (y_previous - a* x_previous**3 + b* x_previous**2 - z_previous + I[i])
+        x_next = x_previous + h * (y_previous - a* x_previous**3 + b* x_previous**2 - z_previous + I_ext)
         y_next = y_previous + h * (c - d*x_previous**2 - y_previous)
         z_next = z_previous + h * r*(s*(x_previous - x_1) - z_previous)
 
@@ -131,7 +133,7 @@ def calc_time_evolution_ode(init_x, init_y, init_z, h,
                 idx_insert = int(idx/100)
 
                 t_hist[idx_insert] = T
-                I_hist[idx_insert] = I[i]
+                I_hist[idx_insert] = I_ext
                 x_hist[idx_insert] = x_previous
                 y_hist[idx_insert] = y_previous
                 z_hist[idx_insert] = z_previous
@@ -205,7 +207,7 @@ if __name__ == "__main__":
 
     # time
     h = 0.001
-    sT = 000
+    sT = 0
     eT = 10000
 
     total_step = int(eT/h)+1
@@ -218,7 +220,7 @@ if __name__ == "__main__":
     #I[220000:250000] = 4
 
     #I = np.full(total_step, 0.4)    # single bursting and resting state
-    I = np.full(total_step, 2)      # periodic bursting
+    I = 2 #np.full(total_step, 2)      # periodic bursting
     #I = np.full(total_step, 4)      # high-frequency tonic spiking
 
 
@@ -227,7 +229,6 @@ if __name__ == "__main__":
                                                              total_step, index_start, store_step)
 
 
-    print(t_hist, x_hist)
 
     # graphic
     plot_time_series(t_hist, I_hist, x_hist, y_hist, z_hist)
